@@ -1,13 +1,12 @@
 // src/core/api.ts
 import axios from "axios";
 import { API_BASE_URL } from "../config";
-import {
-  OltOptions,
-  OntDevice,
-  PsbCustomer,
-  TicketResult,
-  CustomerInvoice,
-} from "../types/api";
+import type {
+  OptionsResponse,
+  UnconfiguredOnt,
+  CustomerData,
+  TicketOperationResponse,
+} from "./generated/models";
 
 // 1. Create the Instance
 const api = axios.create({
@@ -32,12 +31,12 @@ api.interceptors.response.use(
 export const Api = {
   // --- PSB FLOW ---
   getOptions: async () => {
-    const { data } = await api.get<OltOptions>("/api/options");
+    const { data } = await api.get<OptionsResponse>("/api/options");
     return data;
   },
 
   detectOnts: async (oltName: string) => {
-    const { data } = await api.get<OntDevice[]>(
+    const { data } = await api.get<UnconfiguredOnt[]>(
       `/api/olts/${oltName}/detect-onts`
     );
     return data;
@@ -45,7 +44,7 @@ export const Api = {
 
   getPsbList: async () => {
     // Matches python: get_real_psb_list
-    const { data } = await api.get<PsbCustomer[]>("/customer/psb");
+    const { data } = await api.get<CustomerData[]>("/customer/psb");
     return data;
   },
 
@@ -56,23 +55,24 @@ export const Api = {
 
   // --- CEK FLOW ---
   searchCustomers: async (query: string) => {
-    const { data } = await api.get<PsbCustomer[]>("/customer/customers-data", {
+    const { data } = await api.get<CustomerData[]>("/customer/customers-data", {
       params: { search: query, limit: 20 },
     });
     return data;
   },
 
   cekOnu: async (oltName: string, interfaceName: string) => {
-    // Note: Your Python code says this returns plain text, not JSON
-    const { data } = await api.post<string>("/onu/cek", {
+    // Correct path from OpenAPI spec: /api/v1/onu/onu/cek (double 'onu')
+    const { data } = await api.post<string>("/api/v1/onu/onu/cek", {
       olt_name: oltName,
       interface: interfaceName,
     });
-    return data; // This might be a string
+    return data;
   },
 
   rebootOnu: async (oltName: string, interfaceName: string) => {
-    const { data } = await api.post(`/${oltName}/onu/reboot`, {
+    // Correct path: /api/v1/onu/{olt_name}/onu/reboot
+    const { data } = await api.post(`/api/v1/onu/${oltName}/onu/reboot`, {
       olt_name: oltName,
       interface: interfaceName,
     });
@@ -80,7 +80,8 @@ export const Api = {
   },
 
   getPortState: async (oltName: string, interfaceName: string) => {
-    const { data } = await api.post(`/${oltName}/onu/port_state`, {
+    // Correct path: /api/v1/onu/{olt_name}/onu/port_state
+    const { data } = await api.post(`/api/v1/onu/${oltName}/onu/port_state`, {
       olt_name: oltName,
       interface: interfaceName,
     });
@@ -88,7 +89,8 @@ export const Api = {
   },
 
   getPortRx: async (oltName: string, interfaceName: string) => {
-    const { data } = await api.post(`/${oltName}/onu/port_rx`, {
+    // Correct path: /api/v1/onu/{olt_name}/onu/port_rx
+    const { data } = await api.post(`/api/v1/onu/${oltName}/onu/port_rx`, {
       olt_name: oltName,
       interface: interfaceName,
     });
@@ -102,8 +104,8 @@ export const Api = {
       timeout: 15000, // 15s timeout from python
     });
     // Handle the case where API returns { data: [...] } or just [...]
-    if (Array.isArray(data)) return data as CustomerInvoice[];
-    return (data.data || []) as CustomerInvoice[];
+    if (Array.isArray(data)) return data as CustomerData[];
+    return (data.data || []) as CustomerData[];
   },
 
   // --- TICKET ---
@@ -122,7 +124,7 @@ export const Api = {
     jenis?: string;
     headless?: boolean;
   }) => {
-    const { data } = await api.post<TicketResult>("/open-ticket/", {
+    const { data } = await api.post<TicketOperationResponse>("/open-ticket/", {
       priority: "LOW",
       jenis: "FREE",
       headless: true,
