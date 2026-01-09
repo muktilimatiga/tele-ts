@@ -48,6 +48,14 @@ export const Api = {
     return data;
   },
 
+  sendNoOnu: async (oltName: string, interfaceName: string) => {
+    const { data } = await api.post(`/api/olts/${oltName}/send-no-onu`, {
+      olt_name: oltName,
+      interface: interfaceName,
+    });
+    return data;
+  },
+  
   configureOnt: async (oltName: string, payload: any) => {
     const { data } = await api.post(`/api/olts/${oltName}/configure`, payload);
     return data;

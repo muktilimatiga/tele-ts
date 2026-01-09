@@ -86,6 +86,8 @@ export const useOnu = {
   portRx: (oltName: string, interfaceName: string) =>
     Api.getPortRx(oltName, interfaceName),
 
+  noOnu: (oltName: string, interfaceName: string) =>
+    Api.sendNoOnu(oltName, interfaceName),
   /** Get ONU IP */
   // getIp: (oltName: string, interfaceName: string) =>
   //   onuApi.getOnuIpApiV1OnuOnuGetIpPost({
@@ -114,7 +116,6 @@ export const useOnu = {
   //     interface: interfaceName,
   //   }),
 };
-
 
 /**
  * Ticket operations

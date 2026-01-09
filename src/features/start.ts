@@ -11,12 +11,12 @@ import type { MyContext } from "../types/session";
 export function registerStartHandlers(bot: Telegraf<MyContext>) {
   bot.start(async (ctx) => {
     await ctx.reply(
-      `🤖 *Selamat datang di Bot Fiber!*\n\n` +
+      `🤖 *BOT Fiber Lexxadata*\n\n` +
         `📋 *Perintah yang tersedia:*\n` +
-        `• /psb - Konfigurasi ONT baru\n` +
+        `• /config - Konfigurasi ONT baru\n` +
         `• /cek <query> - Cek status pelanggan\n` +
-        `• link <nama/pppoe> - Cek tagihan\n` +
-        `• l <nama/pppoe> - Singkatan dari link\n\n` +
+        `• /link <nama/pppoe> - Cek tagihan\n` +
+        `• /reboot <nama/pppoe> - Reboot ONU\n\n` +
         `Ketik /help untuk bantuan lebih lanjut.`,
       { parse_mode: "Markdown" }
     );

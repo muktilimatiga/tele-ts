@@ -8,9 +8,7 @@ import { Markup } from "telegraf";
  * Cancel button keyboard
  */
 export function cancelKeyboard() {
-  return Markup.inlineKeyboard([
-    Markup.button.callback("❌ Cancel", "cancel"),
-  ]);
+  return Markup.inlineKeyboard([Markup.button.callback("Cancel", "cancel")]);
 }
 
 /**
@@ -29,8 +27,8 @@ export function modemSelectKeyboard() {
  */
 export function confirmKeyboard() {
   return Markup.inlineKeyboard([
-    Markup.button.callback("🚀 YA, EKSEKUSI", "confirm_yes"),
-    Markup.button.callback("❌ BATAL", "cancel"),
+    Markup.button.callback("Oke", "confirm_yes"),
+    Markup.button.callback("Cancel", "cancel"),
   ]);
 }
 
@@ -47,11 +45,13 @@ export function listKeyboard<T>(
   callbackPrefix: string,
   maxItems = 5
 ) {
-  const buttons = items.slice(0, maxItems).map((item, idx) => [
-    Markup.button.callback(labelFn(item, idx), `${callbackPrefix}${idx}`),
-  ]);
+  const buttons = items
+    .slice(0, maxItems)
+    .map((item, idx) => [
+      Markup.button.callback(labelFn(item, idx), `${callbackPrefix}${idx}`),
+    ]);
 
-  buttons.push([Markup.button.callback("❌ Cancel", "cancel")]);
+  buttons.push([Markup.button.callback("Cancel", "cancel")]);
 
   return Markup.inlineKeyboard(buttons);
 }
@@ -63,32 +63,25 @@ export function oltListKeyboard(olts: string[]) {
   const buttons = olts.map((olt) => [
     Markup.button.callback(`📡 ${olt}`, `olt:${olt}`),
   ]);
-  buttons.push([Markup.button.callback("❌ Cancel", "cancel")]);
+  buttons.push([Markup.button.callback("Cancel", "cancel")]);
   return Markup.inlineKeyboard(buttons);
 }
 
+/**
+ * ETH Lock keyboard
+ */
+export function ethLockKeyboard() {
+  return Markup.inlineKeyboard([
+    Markup.button.callback("Lock", "eth_lock"),
+    Markup.button.callback("Unlock", "eth_unlock"),
+  ]);
+}
 /**
  * Refresh + Cancel keyboard for empty results
  */
 export function refreshCancelKeyboard(refreshCallback: string) {
   return Markup.inlineKeyboard([
-    Markup.button.callback("🔄 Refresh", refreshCallback),
-    Markup.button.callback("❌ Cancel", "cancel"),
+    Markup.button.callback("Refresh", refreshCallback),
+    Markup.button.callback("Cancel", "cancel"),
   ]);
 }
-
-/**
- * ONU Actions keyboard for cek flow
- */
-export function onuActionsKeyboard() {
-  return Markup.inlineKeyboard([
-    [Markup.button.callback("Cek Status", "cek_status")],
-    [Markup.button.callback("Cek Redaman", "cek_redaman")],
-    [Markup.button.callback("Reboot ONU", "cek_reboot")],
-    [
-      Markup.button.callback("Refresh", "cek_refresh"),
-      Markup.button.callback("Cancel", "cancel"),
-    ],
-  ]);
-}
-

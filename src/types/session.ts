@@ -10,7 +10,7 @@ import type { Context } from "telegraf";
 export interface SelectedCustomer {
   name?: string;
   address?: string;
-  pppoe_user?: string;
+  user_pppoe?: string;
   olt_name?: string;
   interface?: string;
 }
@@ -27,10 +27,22 @@ export interface SessionData {
     | "SELECT_ONT"
     | "SELECT_PSB"
     | "SELECT_MODEM"
+    | "CONFIRM_ETH_LOCK"
     | "CONFIRM"
+
+    // CONFIG ULANG
+    | "SELECT_OLT_CONFIGULANG"
+    | "SELECT_ONT_CONFIGULANG"
+    | "SELECT_PSB_CONFIGULANG"
+    | "SELECT_MODEM_CONFIGULANG"
+    | "CONFIRM_ETH_LOCK_CONFIGULANG"
+    | "CONFIRM_CONFIGULANG"
+
     // Cek flow
     | "CEK_SELECT"
-    | "CEK_ACTIONS";
+    | "CEK_ACTIONS"
+    | "REBOOT_CONFIRM"
+    | "CONFIG_ULANG_CONFIRM";
 
   // PSB flow data
   oltName?: string;
@@ -39,6 +51,8 @@ export interface SessionData {
   psbList?: any[];
   selectedPsb?: any;
   selectedModem?: string;
+  selectedEthLock?: boolean[];
+  ethLock?: boolean[];
   page?: number;
 
   // Cek flow data

@@ -7,8 +7,8 @@ import type { MyContext } from "../types/session";
 
 import { registerStartHandlers } from "./start";
 import { registerBillingHandlers } from "./billing";
-import { registerCekHandlers } from "./cek";
-import { registerPsbHandlers } from "./psb";
+import { registerAllCekHandlers } from "./cek";
+import { registerPsbHandlers } from "./config/config";
 
 /**
  * Register all bot command/action handlers
@@ -16,15 +16,15 @@ import { registerPsbHandlers } from "./psb";
 export function registerAllHandlers(bot: Telegraf<MyContext>) {
   registerStartHandlers(bot);
   registerBillingHandlers(bot);
-  registerCekHandlers(bot);
+  registerAllCekHandlers(bot); // Registers all cek handlers (command + actions)
   registerPsbHandlers(bot);
 }
 
 // Re-export individual features for selective use
 export { registerStartHandlers } from "./start";
 export { registerBillingHandlers } from "./billing";
-export { registerCekHandlers } from "./cek";
-export { registerPsbHandlers } from "./psb";
+export { registerAllCekHandlers, registerCekHandlers } from "./cek";
+export { registerPsbHandlers } from "./config/config";
 
 // Re-export billing utilities (used elsewhere)
 export {
