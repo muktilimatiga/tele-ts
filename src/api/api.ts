@@ -1,6 +1,9 @@
-// src/core/api.ts
-import axios from "axios";
-import { API_BASE_URL } from "../config";
+/**
+ * API Client - Manual API wrappers using shared Axios instance
+ * Uses AXIOS_INSTANCE from custom_instance.ts to ensure consistent interceptors
+ */
+
+import { AXIOS_INSTANCE } from "./custom_instance";
 import type {
   OptionsResponse,
   UnconfiguredOnt,
@@ -8,117 +11,146 @@ import type {
   TicketOperationResponse,
 } from "./generated/models";
 
-// 1. Create the Instance
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 60000, // 60 seconds (matches your Python code)
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-// 2. Add Response Interceptor (Optional but recommended)
-// This logs errors automatically so you don't have to print() everywhere
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error(`[API Error] ${error.config?.url}:`, error.message);
-    return Promise.reject(error);
-  }
-);
-
-// 3. Export Typed API Methods
+/**
+ * Manual API methods for endpoints not covered by Orval
+ * or requiring custom handling
+ */
 export const Api = {
   // --- PSB FLOW ---
-  getOptions: async () => {
-    const { data } = await api.get<OptionsResponse>("/api/options");
+  getOptions: async (): Promise<OptionsResponse> => {
+    const { data } = await AXIOS_INSTANCE.get<OptionsResponse>("/api/options");
     return data;
   },
 
-  detectOnts: async (oltName: string) => {
-    const { data } = await api.get<UnconfiguredOnt[]>(
+  detectOnts: async (oltName: string): Promise<UnconfiguredOnt[]> => {
+    const { data } = await AXIOS_INSTANCE.get<UnconfiguredOnt[]>(
       `/api/olts/${oltName}/detect-onts`
     );
     return data;
   },
 
-  getPsbList: async () => {
-    // Matches python: get_real_psb_list
-    const { data } = await api.get<CustomerData[]>("/customer/psb");
+  getPsbList: async (): Promise<CustomerData[]> => {
+    const { data } = await AXIOS_INSTANCE.get<CustomerData[]>("/customer/psb");
     return data;
   },
 
-  sendNoOnu: async (oltName: string, interfaceName: string) => {
-    const { data } = await api.post(`/api/olts/${oltName}/send-no-onu`, {
-      olt_name: oltName,
-      interface: interfaceName,
-    });
+  sendNoOnu: async (
+    oltName: string,
+    interfaceName: string
+  ): Promise<{ message: string }> => {
+    const { data } = await AXIOS_INSTANCE.post<{ message: string }>(
+      `/api/olts/${oltName}/send-no-onu`,
+      {
+        olt_name: oltName,
+        interface: interfaceName,
+      }
+    );
     return data;
   },
-  
-  configureOnt: async (oltName: string, payload: any) => {
-    const { data } = await api.post(`/api/olts/${oltName}/configure`, payload);
+
+  configureOnt: async (
+    oltName: string,
+    payload: {
+      sn: string;
+      customer: {
+        name: string;
+        address: string;
+        pppoe_user: string;
+        pppoe_pass: string;
+      };
+      package: string;
+      modem_type: string;
+      eth_locks: boolean[];
+    }
+  ): Promise<{ message: string }> => {
+    const { data } = await AXIOS_INSTANCE.post<{ message: string }>(
+      `/api/olts/${oltName}/configure`,
+      payload
+    );
     return data;
   },
 
   // --- CEK FLOW ---
-  searchCustomers: async (query: string) => {
-    const { data } = await api.get<CustomerData[]>("/customer/customers-data", {
-      params: { search: query, limit: 20 },
-    });
+  searchCustomers: async (query: string): Promise<CustomerData[]> => {
+    const { data } = await AXIOS_INSTANCE.get<CustomerData[]>(
+      "/customer/customers-data",
+      {
+        params: { search: query, limit: 20 },
+      }
+    );
     return data;
   },
 
-  cekOnu: async (oltName: string, interfaceName: string) => {
-    // Correct path from OpenAPI spec: /api/v1/onu/onu/cek (double 'onu')
-    const { data } = await api.post<string>("/api/v1/onu/onu/cek", {
+  cekOnu: async (oltName: string, interfaceName: string): Promise<string> => {
+    const { data } = await AXIOS_INSTANCE.post<string>("/api/v1/onu/onu/cek", {
       olt_name: oltName,
       interface: interfaceName,
     });
     return data;
   },
 
-  rebootOnu: async (oltName: string, interfaceName: string) => {
-    // Correct path: /api/v1/onu/{olt_name}/onu/reboot
-    const { data } = await api.post(`/api/v1/onu/${oltName}/onu/reboot`, {
-      olt_name: oltName,
-      interface: interfaceName,
-    });
+  rebootOnu: async (
+    oltName: string,
+    interfaceName: string
+  ): Promise<string> => {
+    const { data } = await AXIOS_INSTANCE.post<string>(
+      `/api/v1/onu/${oltName}/onu/reboot`,
+      {
+        olt_name: oltName,
+        interface: interfaceName,
+      }
+    );
     return data;
   },
 
-  getPortState: async (oltName: string, interfaceName: string) => {
-    // Correct path: /api/v1/onu/{olt_name}/onu/port_state
-    const { data } = await api.post(`/api/v1/onu/${oltName}/onu/port_state`, {
-      olt_name: oltName,
-      interface: interfaceName,
-    });
+  getPortState: async (
+    oltName: string,
+    interfaceName: string
+  ): Promise<string> => {
+    const { data } = await AXIOS_INSTANCE.post<string>(
+      `/api/v1/onu/${oltName}/onu/port_state`,
+      {
+        olt_name: oltName,
+        interface: interfaceName,
+      }
+    );
     return data;
   },
 
-  getPortRx: async (oltName: string, interfaceName: string) => {
-    // Correct path: /api/v1/onu/{olt_name}/onu/port_rx
-    const { data } = await api.post(`/api/v1/onu/${oltName}/onu/port_rx`, {
-      olt_name: oltName,
-      interface: interfaceName,
-    });
+  getPortRx: async (
+    oltName: string,
+    interfaceName: string
+  ): Promise<string> => {
+    const { data } = await AXIOS_INSTANCE.post<string>(
+      `/api/v1/onu/${oltName}/onu/port_rx`,
+      {
+        olt_name: oltName,
+        interface: interfaceName,
+      }
+    );
     return data;
   },
 
   // --- BILLING ---
-  getInvoices: async (query: string) => {
-    const { data } = await api.get<any>("/customers/invoices", {
+  getInvoices: async (query: string): Promise<CustomerData[]> => {
+    const { data } = await AXIOS_INSTANCE.get<
+      CustomerData[] | { data: CustomerData[] }
+    >("/customers/invoices", {
       params: { query },
-      timeout: 15000, // 15s timeout from python
+      timeout: 15000,
     });
     // Handle the case where API returns { data: [...] } or just [...]
-    if (Array.isArray(data)) return data as CustomerData[];
-    return (data.data || []) as CustomerData[];
+    if (Array.isArray(data)) return data;
+    return data.data || [];
   },
 
   // --- TICKET ---
-  searchOpenTicket: async (query: string) => {
-    const { data } = await api.get("/open-ticket/search", {
+  searchOpenTicket: async (
+    query: string
+  ): Promise<Array<Record<string, unknown>>> => {
+    const { data } = await AXIOS_INSTANCE.get<
+      Array<Record<string, unknown>> | { results: Array<Record<string, unknown>> }
+    >("/open-ticket/search", {
       params: { query },
     });
     if (Array.isArray(data)) return data;
@@ -131,15 +163,16 @@ export const Api = {
     priority?: string;
     jenis?: string;
     headless?: boolean;
-  }) => {
-    const { data } = await api.post<TicketOperationResponse>("/open-ticket/", {
-      priority: "LOW",
-      jenis: "FREE",
-      headless: true,
-      ...payload,
-    });
+  }): Promise<TicketOperationResponse> => {
+    const { data } = await AXIOS_INSTANCE.post<TicketOperationResponse>(
+      "/open-ticket/",
+      {
+        priority: "LOW",
+        jenis: "FREE",
+        headless: true,
+        ...payload,
+      }
+    );
     return data;
   },
 };
-
-export default api; // Export raw axios instance just in case

@@ -4,8 +4,9 @@
  */
 
 import { Markup, type Telegraf } from "telegraf";
-import type { MyContext } from "../../types/session";
+import type { MyContext, SessionData } from "../../types/session";
 import { useCustomer, useConfigApi, configApi } from "../../api/hooks";
+import { formatError, logError } from "../../utils/error-handler";
 import {
   oltListKeyboard,
   modemSelectKeyboard,
@@ -14,6 +15,24 @@ import {
   listKeyboard,
   ethLockKeyboard,
 } from "../../keyboards";
+
+/**
+ * Validate that the session is in the expected step
+ * Returns false and notifies user if session is stale
+ */
+async function requireStep(
+  ctx: MyContext,
+  expected: SessionData["step"]
+): Promise<boolean> {
+  if (ctx.session.step !== expected) {
+    await ctx.answerCbQuery("⚠️ Session expired");
+    await ctx.reply(
+      "⚠️ Session expired atau aksi tidak valid.\nJalankan /config untuk memulai ulang."
+    );
+    return false;
+  }
+  return true;
+}
 
 /**
  * Register PSB (Pasang Baru) flow handlers
@@ -34,8 +53,9 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
         parse_mode: "Markdown",
         ...oltListKeyboard(olts),
       });
-    } catch (e: any) {
-      await ctx.reply(`Error: ${e.message}`);
+    } catch (e: unknown) {
+      logError("PSB Start", e);
+      await ctx.reply(formatError(e));
     }
   };
 
@@ -45,6 +65,10 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
   // --- OLT SELECTION ---
   bot.action(/^olt:(.+)$/, async (ctx) => {
     await ctx.answerCbQuery();
+
+    // Validate step
+    if (!await requireStep(ctx, "SELECT_OLT")) return;
+
     const oltName = ctx.match[1]!;
 
     ctx.session.oltName = oltName;
@@ -81,18 +105,25 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
           [Markup.button.callback("Cancel", "cancel")],
         ]),
       });
-    } catch (e: any) {
-      await ctx.editMessageText(`API Error: ${e.message}`);
+    } catch (e: unknown) {
+      logError("OLT Selection", e);
+      await ctx.editMessageText(formatError(e));
     }
   });
 
   // --- ONT SELECTION -> PSB LIST ---
   bot.action(/^ont:(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery();
+
+    // Validate step
+    if (!await requireStep(ctx, "SELECT_ONT")) return;
+
     const idx = parseInt(ctx.match[1]!);
     const ont = ctx.session.ontList?.[idx];
 
-    if (!ont) return ctx.reply("Session expired. /psb to restart.");
+    if (!ont) {
+      return ctx.reply("Session expired. /config to restart.");
+    }
 
     ctx.session.selectedOnt = ont;
     ctx.session.step = "SELECT_PSB";
@@ -122,18 +153,25 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
           ]),
         }
       );
-    } catch (e: any) {
-      await ctx.editMessageText(`Failed to fetch PSB: ${e.message}`);
+    } catch (e: unknown) {
+      logError("PSB List", e);
+      await ctx.editMessageText(formatError(e));
     }
   });
 
   // --- PSB SELECTION -> MODEM ---
   bot.action(/^psb:(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery();
+
+    // Validate step
+    if (!await requireStep(ctx, "SELECT_PSB")) return;
+
     const idx = parseInt(ctx.match[1]!);
     const psb = ctx.session.psbList?.[idx];
 
-    if (!psb) return ctx.reply("Session expired.");
+    if (!psb) {
+      return ctx.reply("Session expired. /config to restart.");
+    }
 
     ctx.session.selectedPsb = psb;
     ctx.session.step = "SELECT_MODEM";
@@ -147,6 +185,10 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
   // --- MODEM SELECTION -> ETH LOCK ---
   bot.action(/^modem:(.+)$/, async (ctx) => {
     await ctx.answerCbQuery();
+
+    // Validate step
+    if (!await requireStep(ctx, "SELECT_MODEM")) return;
+
     const modem = ctx.match[1];
     ctx.session.selectedModem = modem;
     ctx.session.step = "CONFIRM_ETH_LOCK";
@@ -163,12 +205,20 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
   // --- ETH LOCK -> CONFIRMATION ---
   bot.action("eth_lock", async (ctx) => {
     await ctx.answerCbQuery();
+
+    // Validate step
+    if (!await requireStep(ctx, "CONFIRM_ETH_LOCK")) return;
+
     ctx.session.selectedEthLock = [true];
     await showConfirmation(ctx);
   });
 
   bot.action("eth_unlock", async (ctx) => {
     await ctx.answerCbQuery();
+
+    // Validate step
+    if (!await requireStep(ctx, "CONFIRM_ETH_LOCK")) return;
+
     ctx.session.selectedEthLock = [false];
     await showConfirmation(ctx);
   });
@@ -182,6 +232,8 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
       selectedModem: modem,
       selectedEthLock: ethLock,
     } = ctx.session;
+
+    ctx.session.step = "CONFIRM";
 
     const lockStatus = ethLock?.every(Boolean) ? "🔒 Locked" : "🔓 Unlocked";
 
@@ -203,6 +255,9 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
 
   // --- EXECUTE CONFIGURATION ---
   bot.action("confirm_yes", async (ctx) => {
+    // Validate step
+    if (!await requireStep(ctx, "CONFIRM")) return;
+
     const {
       oltName,
       selectedOnt,
@@ -211,9 +266,11 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
       selectedEthLock,
     } = ctx.session;
 
-    if (!oltName || !selectedOnt) return ctx.reply("Session expired.");
+    if (!oltName || !selectedOnt) {
+      return ctx.reply("Session expired. /config to restart.");
+    }
 
-    await ctx.editMessageText("Proses konfigurasi... Harap tunggu.");
+    await ctx.editMessageText("⏳ Proses konfigurasi... Harap tunggu.");
 
     try {
       const result =
@@ -233,19 +290,18 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
           }
         );
 
+      // Reset session on success
+      ctx.session = { step: "IDLE" };
+
       await ctx.editMessageText(
         `✅ *SUCCESS*\n\n${result.message || "Configured!"}`,
         { parse_mode: "Markdown" }
       );
-    } catch (e: any) {
-      await ctx.editMessageText(
-        `❌ *FAILED*\nError: ${e.response?.data?.detail || e.message}`,
-        { parse_mode: "Markdown" }
-      );
+    } catch (e: unknown) {
+      logError("Config Execute", e);
+      await ctx.editMessageText(formatError(e), { parse_mode: "Markdown" });
     }
   });
-
-  // Handle CONFIG ULANG
 
   // --- GLOBAL CANCEL ---
   bot.action("cancel", async (ctx) => {

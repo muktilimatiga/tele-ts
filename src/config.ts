@@ -1,6 +1,26 @@
-const API_BASE_URL = process.env.API_BASE_URL || "";
-const TELEGRAM_BOT_TOKEN = process.env.BOT_TOKEN || "";
+/**
+ * Configuration - Environment variable validation with Zod
+ */
 
-if (!TELEGRAM_BOT_TOKEN || !API_BASE_URL) throw new Error("BOT_TOKEN or API_BASE_URL is missing!");
+import { z } from "zod";
 
-export { API_BASE_URL, TELEGRAM_BOT_TOKEN };
+// Define schema for environment variables
+const envSchema = z.object({
+    BOT_TOKEN: z.string().min(1, "BOT_TOKEN is required"),
+    API_BASE_URL: z.string().url("API_BASE_URL must be a valid URL"),
+});
+
+// Validate environment variables
+const parsed = envSchema.safeParse(process.env);
+
+if (!parsed.success) {
+    console.error("❌ Invalid environment configuration:");
+    parsed.error.issues.forEach((issue) => {
+        console.error(`  - ${issue.path.join(".")}: ${issue.message}`);
+    });
+    process.exit(1);
+}
+
+// Export validated configuration
+export const TELEGRAM_BOT_TOKEN = parsed.data.BOT_TOKEN;
+export const API_BASE_URL = parsed.data.API_BASE_URL;

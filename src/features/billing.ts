@@ -3,10 +3,12 @@
  * Handles billing lookup workflow for the Telegram bot
  */
 
-import type { Telegraf } from "telegraf";
+import { Markup, type Telegraf } from "telegraf";
 import { useCustomer } from "../api/hooks";
-import type { Customer } from "../api/hooks";
+import type { Customer, CustomerData } from "../api/hooks";
 import type { MyContext } from "../types/session";
+import { formatError, logError } from "../utils/error-handler";
+import { customerSelectKeyboard } from "../keyboards";
 
 /**
  * Error thrown when customer data is not found
@@ -27,99 +29,23 @@ export interface BillingResult {
 }
 
 /**
- * Lookup billing information for a customer
- *
- * Workflow:
- * 1. Try to find customer using search (by name or user_pppoe)
- * 2. If found, use user_pppoe to get billing details
- * 3. If not found in search, fallback to direct billing lookup
- * 4. If still not found, throw CustomerNotFoundError
- *
- * @param query - Customer name or user_pppoe
- * @returns BillingResult with customer data and source
- * @throws CustomerNotFoundError if customer not found
+ * Lookup billing for a specific pppoe_user
  */
-export async function lookupBilling(query: string): Promise<BillingResult> {
-  // Step 1: Try to find customer via search
+async function getBillingForUser(pppoeUser: string): Promise<Customer | null> {
   try {
-    const searchResults = await useCustomer.search(query);
-
-    if (searchResults && searchResults.length > 0) {
-      // Found customer in search - use their pppoe_user to get billing
-      const customerData = searchResults[0];
-      if (!customerData) {
-        // Shouldn't happen, but TypeScript safety
-        throw new Error("Unexpected empty search result");
-      }
-      const pppoeUser = customerData.pppoe_user;
-
-      if (pppoeUser) {
-        // Get full billing details
-        const billingResults = await useCustomer.getBilling(pppoeUser);
-        const billingCustomer = billingResults?.[0];
-
-        if (billingCustomer) {
-          return {
-            customer: billingCustomer,
-            source: "search",
-          };
-        }
-      }
-
-      // If no pppoe_user or billing not found, try with original query
-    }
+    const billingResults = await useCustomer.getBilling(pppoeUser);
+    return billingResults?.[0] || null;
   } catch (error) {
-    // Search failed, continue to fallback
-    console.log(`[Billing] Search failed for "${query}", trying direct lookup`);
+    logError("Billing Lookup", error);
+    return null;
   }
-
-  // Step 2: Fallback - try direct billing lookup
-  try {
-    const billingResults = await useCustomer.getBilling(query);
-    const billingCustomer = billingResults?.[0];
-
-    if (billingCustomer) {
-      return {
-        customer: billingCustomer,
-        source: "direct",
-      };
-    }
-  } catch (error) {
-    // Direct lookup also failed
-    console.log(`[Billing] Direct lookup failed for "${query}"`);
-  }
-
-  // Step 3: Nothing found - throw error
-  throw new CustomerNotFoundError(query);
-}
-
-/**
- * Parse billing command from user input
- * Supports: "link <query>", "l <query>"
- *
- * @param text - User input text
- * @returns Query string or null if not a billing command
- */
-export function parseBillingCommand(text: string): string | null {
-  const trimmed = text.trim();
-
-  // Match "link" or "l" followed by query
-  const match = trimmed.match(/^(?:link|l)\s+(.+)$/i);
-
-  if (match?.[1]) {
-    return match[1].trim();
-  }
-
-  return null;
 }
 
 /**
  * Format billing result for display in Telegram
  * Returns [mainMessage, invoicesMessage] - invoices can be sent separately
  */
-export function formatBillingResponse(result: BillingResult): [string, string | null] {
-  const { customer } = result;
-
+export function formatBillingResponse(customer: Customer): [string, string | null] {
   // Main info message
   const mainLines: string[] = [
     `*${customer.name || "N/A"}*`,
@@ -150,46 +76,140 @@ export function formatBillingResponse(result: BillingResult): [string, string | 
 }
 
 /**
+ * Parse billing command from user input
+ * Supports: "/link <query>", "link <query>", "/l <query>", "l <query>"
+ */
+export function parseBillingCommand(text: string): string | null {
+  const trimmed = text.trim();
+  const match = trimmed.match(/^\/?(?:link|l)\s+(.+)$/i);
+  return match?.[1]?.trim() || null;
+}
+
+/**
+ * Send billing info for a customer
+ */
+async function sendBillingInfo(ctx: MyContext, pppoeUser: string) {
+  const customer = await getBillingForUser(pppoeUser);
+
+  if (!customer) {
+    await ctx.reply(`Tidak dapat mengambil data billing untuk: \`${pppoeUser}\``, {
+      parse_mode: "Markdown",
+    });
+    return;
+  }
+
+  const [mainMessage, invoicesMessage] = formatBillingResponse(customer);
+
+  // Send main info
+  await ctx.reply(mainMessage, { parse_mode: "Markdown" });
+
+  // Send invoices as separate message if available
+  if (invoicesMessage) {
+    await ctx.reply(invoicesMessage, {
+      parse_mode: "Markdown",
+      link_preview_options: { is_disabled: true },
+    });
+  }
+}
+
+/**
  * Register billing command handlers (link/l)
  */
 export function registerBillingHandlers(bot: Telegraf<MyContext>) {
-  bot.hears(/^(?:link|l)\s+.+$/i, async (ctx) => {
+  // Match both "/link query" and "link query" patterns
+  bot.hears(/^\/?(?:link|l)\s+.+$/i, async (ctx) => {
     const query = parseBillingCommand(ctx.message.text);
 
     if (!query) {
-      return ctx.reply("❌ Format salah. Gunakan: `link <nama/pppoe>`", {
+      return ctx.reply("Format salah. Gunakan: `link <nama/pppoe>`", {
         parse_mode: "Markdown",
       });
     }
 
-    await ctx.reply(`🔍 Mencari data untuk: *${query}*...`, {
+    await ctx.reply(`Mencari data untuk: *${query}*...`, {
       parse_mode: "Markdown",
     });
 
     try {
-      const result = await lookupBilling(query);
-      const [mainMessage, invoicesMessage] = formatBillingResponse(result);
+      // Step 1: Search for customers
+      const searchResults = await useCustomer.search(query);
+      console.log(`[Billing] Search results: ${searchResults?.length || 0}`);
 
-      // Send main info
-      await ctx.reply(mainMessage, { parse_mode: "Markdown" });
-
-      // Send invoices as separate message if available (no link preview)
-      if (invoicesMessage) {
-        await ctx.reply(invoicesMessage, {
+      if (!searchResults || searchResults.length === 0) {
+        return ctx.reply(`Data tidak ditemukan: \`${query}\``, {
           parse_mode: "Markdown",
-          link_preview_options: { is_disabled: true },
         });
       }
+
+      // Step 2: If only 1 result, directly fetch billing
+      if (searchResults.length === 1) {
+        const customer = searchResults[0]!;
+        const pppoeUser = customer.pppoe_user;
+
+        if (!pppoeUser) {
+          return ctx.reply("Customer tidak memiliki data PPPoE.");
+        }
+
+        console.log(`[Billing] Single result, fetching billing for: ${pppoeUser}`);
+        await sendBillingInfo(ctx, pppoeUser);
+        return;
+      }
+
+      ctx.session.billingResults = searchResults;
+      ctx.session.step = "BILLING_SELECT";
+
+      await ctx.reply(`📋 Ditemukan ${searchResults.length} pelanggan. Pilih:`, {
+        ...customerSelectKeyboard(searchResults, "billing_select:"),
+      });
     } catch (error) {
-      if (error instanceof CustomerNotFoundError) {
-        await ctx.reply(`❌ Data tidak ditemukan: \`${query}\``, {
-          parse_mode: "Markdown",
-        });
-      } else {
-        console.error("[Billing Error]", error);
-        await ctx.reply("❌ Terjadi kesalahan saat mengambil data.");
-      }
+      logError("Billing", error);
+      await ctx.reply(formatError(error));
     }
+  });
+
+  // --- Customer Selection from list ---
+  bot.action(/^billing_select:(\d+)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+
+    // Validate step
+    if (ctx.session.step !== "BILLING_SELECT") {
+      return ctx.reply("⚠️ Session expired. Jalankan /link lagi.");
+    }
+
+    const idx = parseInt(ctx.match[1]!);
+    const customer = ctx.session.billingResults?.[idx] as CustomerData | undefined;
+
+    if (!customer) {
+      return ctx.reply("Session expired. Gunakan /link lagi.");
+    }
+
+    const pppoeUser = customer.pppoe_user;
+    if (!pppoeUser) {
+      return ctx.reply("Customer tidak memiliki data PPPoE.");
+    }
+
+    // Clear session
+    ctx.session.step = "IDLE";
+    ctx.session.billingResults = undefined;
+
+    await ctx.editMessageText(`✅ Dipilih: ${customer.name}\n⏳ Mengambil data billing...`);
+
+    console.log(`[Billing] Selected customer, fetching billing for: ${pppoeUser}`);
+    await sendBillingInfo(ctx, pppoeUser);
   });
 }
 
+// Legacy exports for compatibility
+export async function lookupBilling(query: string): Promise<BillingResult> {
+  const searchResults = await useCustomer.search(query);
+  if (searchResults && searchResults.length > 0) {
+    const customer = searchResults[0];
+    if (customer?.pppoe_user) {
+      const billingCustomer = await getBillingForUser(customer.pppoe_user);
+      if (billingCustomer) {
+        return { customer: billingCustomer, source: "search" };
+      }
+    }
+  }
+  throw new CustomerNotFoundError(query);
+}

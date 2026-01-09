@@ -6,24 +6,26 @@ import type { MyContext } from "../../types/session";
 import { useOnu } from "../../api/hooks";
 import { onuActionsKeyboard } from "./keyboards";
 import { cleanOnuOutput } from "./utils";
+import { formatError, logError } from "../../utils/error-handler";
+import { mainMenuKeyboard } from "../../keyboards";
 
 export function registerCekStatus1PortHandler(bot: Telegraf<MyContext>) {
-  bot.action("cek_status_1_port", async (ctx) => {
-    await ctx.answerCbQuery();
-
+  bot.hears("Cek Status 1 PORT", async (ctx) => {
     const customer = ctx.session.selectedCustomer;
     if (!customer) {
-      return ctx.reply("Session expired. Use /cek again.");
+      return ctx.reply("Session expired. Use /cek again.", mainMenuKeyboard());
     }
 
     const oltName = customer.olt_name;
     const interfaceName = customer.interface;
 
     if (!oltName || !interfaceName) {
-      return ctx.reply("⚠️ Data OLT/Interface tidak tersedia.");
+      return ctx.reply("Data OLT/Interface tidak tersedia.", onuActionsKeyboard());
     }
 
-    await ctx.editMessageText("⏳ Mengecek status 1 port...");
+    ctx.session.lastCekAction = "status_1_port";
+
+    await ctx.reply("⏳ Mengecek status 1 port...");
 
     try {
       const result = await useOnu.portState(oltName, interfaceName);
@@ -31,15 +33,16 @@ export function registerCekStatus1PortHandler(bot: Telegraf<MyContext>) {
         typeof result === "string"
           ? cleanOnuOutput(result)
           : Object.entries(result)
-              .map(([k, v]) => `${k}: ${v}`)
-              .join("\n");
+            .map(([k, v]) => `${k}: ${v}`)
+            .join("\n");
 
       await ctx.reply(`*Port State:*\n\`\`\`\n${resultText}\n\`\`\``, {
         parse_mode: "Markdown",
         ...onuActionsKeyboard(),
       });
-    } catch (error: any) {
-      await ctx.reply(`Error: ${error.message}`, onuActionsKeyboard());
+    } catch (e: unknown) {
+      logError("Cek Status 1 PORT", e);
+      await ctx.reply(formatError(e), onuActionsKeyboard());
     }
   });
 }

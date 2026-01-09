@@ -21,28 +21,31 @@ export interface SelectedCustomer {
 export interface SessionData {
   // General
   step?:
-    | "IDLE"
-    // PSB flow
-    | "SELECT_OLT"
-    | "SELECT_ONT"
-    | "SELECT_PSB"
-    | "SELECT_MODEM"
-    | "CONFIRM_ETH_LOCK"
-    | "CONFIRM"
+  | "IDLE"
+  // PSB flow
+  | "SELECT_OLT"
+  | "SELECT_ONT"
+  | "SELECT_PSB"
+  | "SELECT_MODEM"
+  | "CONFIRM_ETH_LOCK"
+  | "CONFIRM"
 
-    // CONFIG ULANG
-    | "SELECT_OLT_CONFIGULANG"
-    | "SELECT_ONT_CONFIGULANG"
-    | "SELECT_PSB_CONFIGULANG"
-    | "SELECT_MODEM_CONFIGULANG"
-    | "CONFIRM_ETH_LOCK_CONFIGULANG"
-    | "CONFIRM_CONFIGULANG"
+  // CONFIG ULANG
+  | "SELECT_OLT_CONFIGULANG"
+  | "SELECT_ONT_CONFIGULANG"
+  | "SELECT_PSB_CONFIGULANG"
+  | "SELECT_MODEM_CONFIGULANG"
+  | "CONFIRM_ETH_LOCK_CONFIGULANG"
+  | "CONFIRM_CONFIGULANG"
 
-    // Cek flow
-    | "CEK_SELECT"
-    | "CEK_ACTIONS"
-    | "REBOOT_CONFIRM"
-    | "CONFIG_ULANG_CONFIRM";
+  // Cek flow
+  | "CEK_SELECT"
+  | "CEK_ACTIONS"
+  | "REBOOT_CONFIRM"
+  | "CONFIG_ULANG_CONFIRM"
+
+  // Billing flow
+  | "BILLING_SELECT";
 
   // PSB flow data
   oltName?: string;
@@ -58,7 +61,10 @@ export interface SessionData {
   // Cek flow data
   cekResults?: any[];
   selectedCustomer?: SelectedCustomer;
-  lastCekAction?: "status" | "redaman" | "reboot";
+  lastCekAction?: "status" | "redaman" | "reboot" | "status_1_port";
+
+  // Billing flow data
+  billingResults?: any[];
 }
 
 /**

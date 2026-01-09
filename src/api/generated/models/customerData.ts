@@ -9,7 +9,7 @@
 export interface CustomerData {
   name: string;
   address: string;
-  user_pppoe: string;
+  pppoe_user: string;
   pppoe_password: string;
   olt_name: string;
   interface: string;

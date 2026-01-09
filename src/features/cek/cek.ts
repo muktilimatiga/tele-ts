@@ -1,7 +1,27 @@
 import { Markup, type Telegraf } from "telegraf";
-import type { MyContext } from "../../types/session";
+import type { MyContext, SessionData } from "../../types/session";
 import { useCustomer, useOnu } from "../../api/hooks";
+import type { CustomerData } from "../../api/hooks";
 import { onuActionsKeyboard } from "./keyboards";
+import { formatError, logError } from "../../utils/error-handler";
+import { customerSelectKeyboard } from "../../keyboards";
+
+/**
+ * Validate that the session is in the expected step
+ */
+async function requireStep(
+  ctx: MyContext,
+  expected: SessionData["step"]
+): Promise<boolean> {
+  if (ctx.session.step !== expected) {
+    await ctx.answerCbQuery?.("⚠️ Session expired");
+    await ctx.reply(
+      "⚠️ Session expired atau aksi tidak valid.\nJalankan /cek lagi."
+    );
+    return false;
+  }
+  return true;
+}
 
 /**
  * Cek handler
@@ -25,47 +45,43 @@ export function registerCekHandlers(bot: Telegraf<MyContext>) {
         ctx.session.step = "CEK_ACTIONS";
 
         await ctx.reply(
-          `Ditemukan: ${customer.name}\n⏳ Mengecek status ONU...`
+          `Pelanggan ditemukan !! Mengecek status ONU ${customer.name}...`
         );
 
         await executeCekOnu(ctx, customer);
       } else {
-        // Multiple results: show list for user to pick
         ctx.session.cekResults = results;
         ctx.session.step = "CEK_SELECT";
 
-        const buttons = results
-          .slice(0, 10)
-          .map((c, i) => [
-            Markup.button.callback(
-              `${(c.name || "").slice(0, 20)} | ${c.user_pppoe || "N/A"}`,
-              `cek_select:${i}`
-            ),
-          ]);
-        buttons.push([Markup.button.callback("Cancel", "cancel")]);
-
         await ctx.reply(`📋 Ditemukan ${results.length} pelanggan. Pilih:`, {
-          ...Markup.inlineKeyboard(buttons),
+          ...customerSelectKeyboard(results, "cek_select:"),
         });
       }
-    } catch (e: any) {
-      ctx.reply(`Error: ${e.message}`);
+    } catch (e: unknown) {
+      logError("Cek Command", e);
+      await ctx.reply(formatError(e));
     }
   });
 
   // --- Customer Selection from list ---
   bot.action(/^cek_select:(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery();
+
+    // Validate step
+    if (!await requireStep(ctx, "CEK_SELECT")) return;
+
     const idx = parseInt(ctx.match[1]!);
     const customer = ctx.session.cekResults?.[idx];
 
-    if (!customer) return ctx.reply("Session expired. Use /cek again.");
+    if (!customer) {
+      return ctx.reply("Session expired. Use /cek again.");
+    }
 
     ctx.session.selectedCustomer = customer;
     ctx.session.step = "CEK_ACTIONS";
 
     await ctx.editMessageText(
-      `✅ Dipilih: ${customer.name}\n⏳ Mengecek status ONU...`
+      `Mengecek status ONU ${customer.name}...`
     );
 
     await executeCekOnu(ctx, customer);
@@ -77,7 +93,7 @@ import { parseOnuResult } from "./utils";
 /**
  * Helper: Execute cekOnu API and reply with result
  */
-async function executeCekOnu(ctx: MyContext, customer: any) {
+async function executeCekOnu(ctx: MyContext, customer: CustomerData) {
   const oltName = customer.olt_name;
   const interfaceName = customer.interface;
 
@@ -93,8 +109,8 @@ async function executeCekOnu(ctx: MyContext, customer: any) {
       typeof result === "string"
         ? result
         : Object.entries(result)
-            .map(([k, v]) => `${k}: ${v}`)
-            .join("\n");
+          .map(([k, v]) => `${k}: ${v}`)
+          .join("\n");
 
     const { detail, attenuation } = parseOnuResult(rawText);
 
@@ -115,7 +131,8 @@ async function executeCekOnu(ctx: MyContext, customer: any) {
       // No attenuation, just send the keyboard with the detail
       await ctx.reply("Pilih aksi:", onuActionsKeyboard());
     }
-  } catch (error: any) {
-    await ctx.reply(`Error cek ONU: ${error.message}`, onuActionsKeyboard());
+  } catch (e: unknown) {
+    logError("Cek ONU", e);
+    await ctx.reply(formatError(e), onuActionsKeyboard());
   }
 }

@@ -85,3 +85,62 @@ export function refreshCancelKeyboard(refreshCallback: string) {
     Markup.button.callback("Cancel", "cancel"),
   ]);
 }
+
+// ===========================================
+// MAIN MENU CONFIGURATION
+// ===========================================
+
+/**
+ * Main menu button configuration
+ * Edit this array to change the main menu buttons
+ */
+export const MAIN_MENU_BUTTONS = [
+  ["/psb", "/cek"],
+  ["/link", "/open"],
+  ["/help"],
+];
+
+/**
+ * Main reply keyboard (persistent at bottom)
+ */
+export function mainMenuKeyboard() {
+  return Markup.keyboard(MAIN_MENU_BUTTONS).resize();
+}
+
+/**
+ * Remove keyboard
+ */
+export function removeKeyboard() {
+  return Markup.removeKeyboard();
+}
+
+/**
+ * Customer selection button format
+ * Edit this to change how customer buttons are displayed
+ */
+export function formatCustomerButton(customer: {
+  name?: string;
+  pppoe_user?: string;
+}): string {
+  const name = (customer.name || "").slice(0, 20);
+  const pppoe = customer.pppoe_user || "N/A";
+  return `${name} | ${pppoe}`;
+}
+
+/**
+ * Build a customer selection keyboard
+ * @param customers - Array of customer objects
+ * @param callbackPrefix - Prefix for callback (e.g., "cek_select:", "billing_select:")
+ * @param maxItems - Maximum items to show (default 10)
+ */
+export function customerSelectKeyboard<
+  T extends { name?: string; pppoe_user?: string }
+>(customers: T[], callbackPrefix: string, maxItems = 10) {
+  const buttons = customers.slice(0, maxItems).map((c, i) => [
+    Markup.button.callback(formatCustomerButton(c), `${callbackPrefix}${i}`),
+  ]);
+
+  buttons.push([Markup.button.callback("Cancel", "cancel")]);
+
+  return Markup.inlineKeyboard(buttons);
+}

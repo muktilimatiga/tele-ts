@@ -5,6 +5,7 @@ import { Markup, type Telegraf } from "telegraf";
 import type { MyContext } from "../../types/session";
 import { useOnu } from "../../api/hooks";
 import { onuActionsKeyboard } from "./keyboards";
+import { formatError, logError } from "../../utils/error-handler";
 
 export function registerRebootHandler(bot: Telegraf<MyContext>) {
   // Request reboot confirmation
@@ -59,11 +60,9 @@ export function registerRebootHandler(bot: Telegraf<MyContext>) {
       });
 
       ctx.session.step = "CEK_ACTIONS";
-    } catch (error: any) {
-      await ctx.reply(
-        `❌ Error reboot: ${error.message}`,
-        onuActionsKeyboard()
-      );
+    } catch (e: unknown) {
+      logError("Reboot", e);
+      await ctx.reply(formatError(e), onuActionsKeyboard());
     }
   });
 }
