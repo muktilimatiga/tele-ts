@@ -121,10 +121,12 @@ export function removeKeyboard() {
 export function formatCustomerButton(customer: {
   name?: string;
   pppoe_user?: string;
+  address?: string;
 }): string {
-  const name = (customer.name || "").slice(0, 20);
+  const name = (customer.name || "").slice(0, 15);
   const pppoe = customer.pppoe_user || "N/A";
-  return `${name} | ${pppoe}`;
+  const alamat = (customer.address || "").slice(0, 15);
+  return `${name} | ${pppoe} | ${alamat}`;
 }
 
 /**

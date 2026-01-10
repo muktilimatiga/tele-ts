@@ -14,13 +14,48 @@ async function requireStep(
   expected: SessionData["step"]
 ): Promise<boolean> {
   if (ctx.session.step !== expected) {
-    await ctx.answerCbQuery?.("⚠️ Session expired");
+    await ctx.answerCbQuery?.("Session expired");
     await ctx.reply(
-      "⚠️ Session expired atau aksi tidak valid.\nJalankan /cek lagi."
+      "Session expired atau aksi tidak valid.\nJalankan /cek lagi."
     );
     return false;
   }
   return true;
+}
+
+/**
+ * Helper: Search customer and handle selection
+ */
+async function searchAndSelectCustomer(ctx: MyContext, searchText: string) {
+  try {
+    const results = await useCustomer.search(searchText);
+
+    if (results.length === 0) {
+      return ctx.reply("Pelanggan tidak ditemukan.");
+    }
+
+    if (results.length === 1 && results[0]) {
+      const customer = results[0];
+      ctx.session.selectedCustomer = customer;
+      ctx.session.step = "CEK_ACTIONS";
+
+      await ctx.reply(
+        `Pelanggan ditemukan !! Mengecek status ONU ${customer.name}...`
+      );
+
+      await executeCekOnu(ctx, customer);
+    } else {
+      ctx.session.cekResults = results;
+      ctx.session.step = "CEK_SELECT";
+
+      await ctx.reply(`📋 Ditemukan ${results.length} pelanggan. Pilih:`, {
+        ...customerSelectKeyboard(results, "cek_select:"),
+      });
+    }
+  } catch (e: unknown) {
+    logError("Cek Command", e);
+    await ctx.reply(formatError(e));
+  }
 }
 
 /**
@@ -32,35 +67,38 @@ export function registerCekHandlers(bot: Telegraf<MyContext>) {
     const args = ctx.message.text.split(" ").slice(1).join(" ").trim();
     if (!args) return ctx.reply("Gunakan: /cek <nama/pppoe>");
 
-    try {
-      const results = await useCustomer.search(args);
+    await searchAndSelectCustomer(ctx, args);
+  });
 
-      if (results.length === 0) {
-        return ctx.reply("Pelanggan tidak ditemukan.");
-      }
+  // Known keyboard commands - should NOT be processed as search queries
+  const knownCommands = ["Cek Redaman 1 PORT", "Refresh", "Cancel", "Reboot", "Config Ulang", "Cek Status 1 PORT"];
 
-      if (results.length === 1 && results[0]) {
-        const customer = results[0];
-        ctx.session.selectedCustomer = customer;
-        ctx.session.step = "CEK_ACTIONS";
+  // --- "cek" or "cek <text>" without slash ---
+  bot.hears(/^cek(?:\s+(.+))?$/i, async (ctx, next) => {
+    const fullText = ctx.message.text.trim();
+    // Skip if it's a known keyboard command (like "Cek Redaman 1 PORT")
+    if (knownCommands.includes(fullText)) return next();
 
-        await ctx.reply(
-          `Pelanggan ditemukan !! Mengecek status ONU ${customer.name}...`
-        );
-
-        await executeCekOnu(ctx, customer);
-      } else {
-        ctx.session.cekResults = results;
-        ctx.session.step = "CEK_SELECT";
-
-        await ctx.reply(`📋 Ditemukan ${results.length} pelanggan. Pilih:`, {
-          ...customerSelectKeyboard(results, "cek_select:"),
-        });
-      }
-    } catch (e: unknown) {
-      logError("Cek Command", e);
-      await ctx.reply(formatError(e));
+    const args = ctx.match[1]?.trim();
+    if (!args) {
+      ctx.session.step = "CEK_WAITING";
+      return ctx.reply("Masukkan nama atau user pppoe");
     }
+
+    await searchAndSelectCustomer(ctx, args);
+  });
+
+  // --- Handle follow-up text when waiting for cek input ---
+  bot.on("text", async (ctx, next) => {
+    if (ctx.session.step !== "CEK_WAITING") return next();
+    
+    const text = ctx.message.text.trim();
+    // If it's a known command, let it pass to the proper handler
+    if (knownCommands.includes(text)) return next();
+    
+    if (!text) return ctx.reply("Masukkan nama atau user pppoe");
+
+    await searchAndSelectCustomer(ctx, text);
   });
 
   // --- Customer Selection from list ---
@@ -93,13 +131,13 @@ import { parseOnuResult } from "./utils";
 /**
  * Helper: Execute cekOnu API and reply with result
  */
-async function executeCekOnu(ctx: MyContext, customer: CustomerData) {
+export async function executeCekOnu(ctx: MyContext, customer: CustomerData) {
   const oltName = customer.olt_name;
   const interfaceName = customer.interface;
 
   if (!oltName || !interfaceName) {
     return ctx.reply(
-      "⚠️ Data OLT/Interface tidak tersedia untuk pelanggan ini."
+      "Data OLT/Interface tidak tersedia untuk pelanggan ini."
     );
   }
 
@@ -116,15 +154,12 @@ async function executeCekOnu(ctx: MyContext, customer: CustomerData) {
 
     // Send detail data first
     if (detail) {
-      await ctx.reply(`*Detail Data:*\n\`\`\`\n${detail}\n\`\`\``, {
-        parse_mode: "Markdown",
-      });
+      await ctx.reply(`${detail}`);
     }
 
     // Send attenuation data with action keyboard
     if (attenuation) {
-      await ctx.reply(`*Attenuation Data:*\n\`\`\`\n${attenuation}\n\`\`\``, {
-        parse_mode: "Markdown",
+      await ctx.reply(`${attenuation}`, {
         ...onuActionsKeyboard(),
       });
     } else {

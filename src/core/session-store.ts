@@ -73,6 +73,31 @@ export const sqliteSessionStore = {
 };
 
 /**
+ * Get all session keys (for restart notification)
+ */
+export const getAllSessionKeys = (): string[] => {
+    try {
+        const rows = db.query<{ key: string }, []>("SELECT key FROM sessions").all();
+        return rows.map(r => r.key);
+    } catch (e) {
+        console.error("[Session] Error getting all session keys:", e);
+        return [];
+    }
+};
+
+/**
+ * Clear all sessions (called on bot restart)
+ */
+export const clearAllSessions = (): void => {
+    try {
+        db.run("DELETE FROM sessions");
+        console.log("[Session] All sessions cleared.");
+    } catch (e) {
+        console.error("[Session] Error clearing sessions:", e);
+    }
+};
+
+/**
  * Cleanup old sessions (optional maintenance)
  * Call periodically to prevent database bloat
  */

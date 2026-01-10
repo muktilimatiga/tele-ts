@@ -12,9 +12,8 @@ import { formatError, logError } from "../../utils/error-handler";
 import { mainMenuKeyboard } from "../../keyboards";
 
 export function registerCekRedaman1PortHandler(bot: Telegraf<MyContext>) {
-  // Legacy callback handler (for inline buttons if any)
-  bot.action("cek_redaman_1_port", async (ctx) => {
-    await ctx.answerCbQuery();
+  // Handle "Cek Redaman 1 PORT" from reply keyboard
+  bot.hears("Cek Redaman 1 PORT", async (ctx) => {
 
     const customer = ctx.session.selectedCustomer;
     if (!customer) {
@@ -41,8 +40,7 @@ export function registerCekRedaman1PortHandler(bot: Telegraf<MyContext>) {
             .map(([k, v]) => `${k}: ${v}`)
             .join("\n");
 
-      await ctx.reply(`*Port RX Power:*\n\`\`\`\n${resultText}\n\`\`\``, {
-        parse_mode: "Markdown",
+      await ctx.reply(`${resultText}`, {
         ...onuActionsKeyboard(),
       });
     } catch (e: unknown) {

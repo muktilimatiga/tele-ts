@@ -14,6 +14,7 @@ import {
   refreshCancelKeyboard,
   listKeyboard,
   ethLockKeyboard,
+  removeKeyboard
 } from "../../keyboards";
 
 /**
@@ -25,9 +26,9 @@ async function requireStep(
   expected: SessionData["step"]
 ): Promise<boolean> {
   if (ctx.session.step !== expected) {
-    await ctx.answerCbQuery("⚠️ Session expired");
+    await ctx.answerCbQuery("Session expired");
     await ctx.reply(
-      "⚠️ Session expired atau aksi tidak valid.\nJalankan /config untuk memulai ulang."
+      "Session expired atau aksi tidak valid.\nJalankan /config untuk memulai ulang."
     );
     return false;
   }
@@ -49,8 +50,7 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
 
       ctx.session = { step: "SELECT_OLT", page: 0 };
 
-      await ctx.reply("📡 *Pilih OLT:*", {
-        parse_mode: "Markdown",
+      await ctx.reply("Pilih OLT:", {
         ...oltListKeyboard(olts),
       });
     } catch (e: unknown) {
@@ -61,6 +61,65 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
 
   bot.command("config", startPsb);
   bot.action("menu_config", startPsb);
+  
+  // Handle 'config <olt_name>' - directly scan ONTs on specified OLT
+  bot.hears(/^\/?(?:config|cfg)(?:\s+(.+))?$/i, async (ctx) => {
+    const oltQuery = ctx.match[1]?.trim();
+    
+    // If no OLT specified, show OLT selection
+    if (!oltQuery) {
+      return startPsb(ctx);
+    }
+
+    try {
+      await ctx.reply(`⏳ Scanning ONT di ${oltQuery}...`);
+
+      // Get available OLTs and find matching one
+      const options = await useConfigApi.getOptions();
+      const olts = options.olt_options;
+      
+      // Find OLT that matches (case-insensitive, partial match)
+      const matchedOlt = olts.find((olt: string) => 
+        olt.toLowerCase().includes(oltQuery.toLowerCase())
+      );
+
+      if (!matchedOlt) {
+        return ctx.reply(
+          `❌ OLT "${oltQuery}" tidak ditemukan.\n\nOLT tersedia:\n${olts.map((o: string) => `• ${o}`).join("\n")}`
+        );
+      }
+
+      // Set session and scan ONTs
+      ctx.session = { step: "SELECT_ONT", oltName: matchedOlt, page: 0 };
+
+      const onts = await useConfigApi.detectOnts(matchedOlt);
+      ctx.session.ontList = onts;
+
+      if (onts.length === 0) {
+        return ctx.reply(
+          `Tidak ada ONT unconfigured di ${matchedOlt}.`,
+          refreshCancelKeyboard(`olt:${matchedOlt}`)
+        );
+      }
+
+      const buttons = onts
+        .slice(0, 5)
+        .map((ont, idx) => [
+          Markup.button.callback(`${ont.sn}`, `ont:${idx}`),
+        ]);
+
+      await ctx.reply(`📡 *${matchedOlt}* - Pilih ONT (Found: ${onts.length})`, {
+        parse_mode: "Markdown",
+        ...Markup.inlineKeyboard([
+          ...buttons,
+          [Markup.button.callback("Cancel", "cancel")],
+        ]),
+      });
+    } catch (e: unknown) {
+      logError("Config Direct OLT", e);
+      await ctx.reply(formatError(e));
+    }
+  });
 
   // --- OLT SELECTION ---
   bot.action(/^olt:(.+)$/, async (ctx) => {
@@ -74,7 +133,7 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
     ctx.session.oltName = oltName;
     ctx.session.step = "SELECT_ONT";
 
-    await ctx.editMessageText(`⏳ Scanning ONT di *${oltName}*...`, {
+    await ctx.editMessageText(`⏳ Scanning ONT di ${oltName}...`, {
       parse_mode: "Markdown",
     });
 
@@ -84,7 +143,7 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
 
       if (onts.length === 0) {
         return ctx.editMessageText(
-          `⚠️ Tidak ada ONT unconfigured di ${oltName}.`,
+          `Tidak ada ONT unconfigured di ${oltName}.`,
           refreshCancelKeyboard(`olt:${oltName}`)
         );
       }
@@ -93,13 +152,12 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
         .slice(0, 5)
         .map((ont, idx) => [
           Markup.button.callback(
-            `${ont.pon_port}:${ont.pon_slot} | ${ont.sn.slice(0, 8)}`,
+            `${ont.sn}`,
             `ont:${idx}`
           ),
         ]);
 
       await ctx.editMessageText(`📡 *Pilih ONT* (Found: ${onts.length})`, {
-        parse_mode: "Markdown",
         ...Markup.inlineKeyboard([
           ...buttons,
           [Markup.button.callback("Cancel", "cancel")],
@@ -128,17 +186,25 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
     ctx.session.selectedOnt = ont;
     ctx.session.step = "SELECT_PSB";
 
-    await ctx.editMessageText("⏳ Mengambil data pelanggan (PSB)...");
+    await ctx.editMessageText("Mengambil data pelanggan (PSB)...");
 
     try {
       const psbList = await useCustomer.getPsbList();
+
+      if (psbList.length === 0) {
+        return ctx.editMessageText(
+          "Tidak ada pelanggan yang ditemukan.",
+          refreshCancelKeyboard(`ont:${idx}`)
+        );
+      }
+
       ctx.session.psbList = psbList;
 
       const buttons = psbList
         .slice(0, 5)
         .map((p, i) => [
           Markup.button.callback(
-            `${(p.name || "").slice(0, 15)} | ${p.user_pppoe || "N/A"}`,
+            `${(p.name || "").slice(0, 15)} | ${p.address || "N/A"}`,
             `psb:${i}`
           ),
         ]);
@@ -146,7 +212,6 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
       await ctx.editMessageText(
         `👤 *Pilih Pelanggan PSB*\nONT: \`${ont.sn}\``,
         {
-          parse_mode: "Markdown",
           ...Markup.inlineKeyboard([
             ...buttons,
             [Markup.button.callback("Cancel", "cancel")],
@@ -294,9 +359,9 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
       ctx.session = { step: "IDLE" };
 
       await ctx.editMessageText(
-        `✅ *SUCCESS*\n\n${result.message || "Configured!"}`,
-        { parse_mode: "Markdown" }
+        `SUCCESS\n\n${result.summary || "Configured!"}`,
       );
+      removeKeyboard()
     } catch (e: unknown) {
       logError("Config Execute", e);
       await ctx.editMessageText(formatError(e), { parse_mode: "Markdown" });
@@ -307,6 +372,7 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
   bot.action("cancel", async (ctx) => {
     await ctx.answerCbQuery("Cancelled");
     ctx.session = { step: "IDLE" };
-    await ctx.editMessageText("🚫 Operation cancelled.");
+    await ctx.editMessageText("Operation cancelled.");
+    removeKeyboard()
   });
 }

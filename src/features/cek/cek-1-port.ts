@@ -36,8 +36,7 @@ export function registerCekStatus1PortHandler(bot: Telegraf<MyContext>) {
             .map(([k, v]) => `${k}: ${v}`)
             .join("\n");
 
-      await ctx.reply(`*Port State:*\n\`\`\`\n${resultText}\n\`\`\``, {
-        parse_mode: "Markdown",
+      await ctx.reply(`${resultText}`, {
         ...onuActionsKeyboard(),
       });
     } catch (e: unknown) {

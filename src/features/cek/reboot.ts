@@ -6,32 +6,28 @@ import type { MyContext } from "../../types/session";
 import { useOnu } from "../../api/hooks";
 import { onuActionsKeyboard } from "./keyboards";
 import { formatError, logError } from "../../utils/error-handler";
+import { mainMenuKeyboard } from "../../keyboards";
 
 export function registerRebootHandler(bot: Telegraf<MyContext>) {
-  // Request reboot confirmation
-  bot.action("reboot", async (ctx) => {
-    await ctx.answerCbQuery();
-
+  // Handle "Reboot ONU" text from reply keyboard
+  bot.hears("Reboot ONU", async (ctx) => {
     const customer = ctx.session.selectedCustomer;
     if (!customer) {
-      return ctx.reply("Session expired. Use /cek again.");
+      return ctx.reply("Session expired. Use /cek again.", mainMenuKeyboard());
     }
 
     ctx.session.step = "REBOOT_CONFIRM";
 
-    await ctx.editMessageText(
-      `⚠️ *Konfirmasi Reboot ONU*\n\nPelanggan: ${customer.name}\nInterface: ${customer.interface}\n\nApakah Anda yakin ingin reboot ONU?`,
-      {
-        parse_mode: "Markdown",
-        ...Markup.inlineKeyboard([
-          Markup.button.callback("Ya, Reboot", "reboot_confirm"),
-          Markup.button.callback("Cancel", "cancel"),
-        ]),
-      }
+    await ctx.reply(
+      `⚠️ Konfirmasi Reboot ONU\n\nPelanggan: ${customer.name}\nInterface: ${customer.interface}\n\nApakah Anda yakin ingin reboot ONU?`,
+      Markup.inlineKeyboard([
+        Markup.button.callback("Ya, Reboot", "reboot_confirm"),
+        Markup.button.callback("Cancel", "cancel"),
+      ])
     );
   });
 
-  // Execute reboot
+  // Execute reboot (callback from inline confirmation)
   bot.action("reboot_confirm", async (ctx) => {
     await ctx.answerCbQuery();
 
@@ -54,8 +50,7 @@ export function registerRebootHandler(bot: Telegraf<MyContext>) {
       const resultText =
         typeof result === "string" ? result : JSON.stringify(result, null, 2);
 
-      await ctx.reply(`✅ *Reboot Berhasil*\n\`\`\`\n${resultText}\n\`\`\``, {
-        parse_mode: "Markdown",
+      await ctx.reply(`Reboot Berhasil\n${resultText}`, {
         ...onuActionsKeyboard(),
       });
 
@@ -66,3 +61,4 @@ export function registerRebootHandler(bot: Telegraf<MyContext>) {
     }
   });
 }
+

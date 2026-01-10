@@ -18,7 +18,7 @@ function hasSelectedCustomer(ctx: MyContext): boolean {
 
 export function registerCekStatusHandler(bot: Telegraf<MyContext>) {
   // Handle "Cek Onu" text from reply keyboard
-  bot.hears("Cek Onu", async (ctx) => {
+  bot.hears("cek", async (ctx) => {
     const customer = ctx.session.selectedCustomer;
     if (!customer) {
       return ctx.reply("Session expired. Use /cek again.", mainMenuKeyboard());
@@ -47,14 +47,11 @@ export function registerCekStatusHandler(bot: Telegraf<MyContext>) {
       const { detail, attenuation } = parseOnuResult(rawText);
 
       if (detail) {
-        await ctx.reply(`*Detail Data:*\n\`\`\`\n${detail}\n\`\`\``, {
-          parse_mode: "Markdown",
-        });
+        await ctx.reply(`${detail}`);
       }
 
       if (attenuation) {
-        await ctx.reply(`*Attenuation:*\n\`\`\`\n${attenuation}\n\`\`\``, {
-          parse_mode: "Markdown",
+        await ctx.reply(`${attenuation}`, {
           ...onuActionsKeyboard(),
         });
       } else {
@@ -66,8 +63,8 @@ export function registerCekStatusHandler(bot: Telegraf<MyContext>) {
     }
   });
 
-  // Handle "Cek Redaman" text
-  bot.hears("Cek Redaman", async (ctx) => {
+  // Handle "Cek Redaman 1 PORT" text
+  bot.hears("Cek Redaman 1 PORT", async (ctx) => {
     const customer = ctx.session.selectedCustomer;
     if (!customer) {
       return ctx.reply("Session expired. Use /cek again.", mainMenuKeyboard());
@@ -89,8 +86,7 @@ export function registerCekStatusHandler(bot: Telegraf<MyContext>) {
       const resultText =
         typeof result === "string" ? cleanOnuOutput(result) : JSON.stringify(result, null, 2);
 
-      await ctx.reply(`*Port RX Power:*\n\`\`\`\n${resultText}\n\`\`\``, {
-        parse_mode: "Markdown",
+      await ctx.reply(`${resultText}`, {
         ...onuActionsKeyboard(),
       });
     } catch (e: unknown) {
@@ -139,8 +135,7 @@ export function registerCekStatusHandler(bot: Telegraf<MyContext>) {
 
       const rawText = typeof result === "string" ? result : JSON.stringify(result, null, 2);
 
-      await ctx.reply(`*Hasil (${lastAction}):*\n\`\`\`\n${rawText}\n\`\`\``, {
-        parse_mode: "Markdown",
+      await ctx.reply(`Hasil (${lastAction}):\n${rawText}`, {
         ...onuActionsKeyboard(),
       });
     } catch (e: unknown) {

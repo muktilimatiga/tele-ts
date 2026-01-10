@@ -31,14 +31,18 @@ export interface SessionData {
   | "CONFIRM"
 
   // CONFIG ULANG
+  | "CONFIGULANG_WAITING_QUERY"
   | "SELECT_OLT_CONFIGULANG"
   | "SELECT_ONT_CONFIGULANG"
   | "SELECT_PSB_CONFIGULANG"
   | "SELECT_MODEM_CONFIGULANG"
   | "CONFIRM_ETH_LOCK_CONFIGULANG"
   | "CONFIRM_CONFIGULANG"
+  | "CONFIRM_NO_ONU_CONFIGULANG"
+  | "CONFIRM_DELETE_ONU_CONFIGULANG"
 
   // Cek flow
+  | "CEK_WAITING"
   | "CEK_SELECT"
   | "CEK_ACTIONS"
   | "REBOOT_CONFIRM"
@@ -65,6 +69,13 @@ export interface SessionData {
 
   // Billing flow data
   billingResults?: any[];
+
+  // Config ulang flow data
+  configUlangCustomer?: any;
+  noOnu?: boolean;
+
+  // Session timeout tracking
+  lastActivity?: number;
 }
 
 /**
