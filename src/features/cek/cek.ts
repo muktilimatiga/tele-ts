@@ -71,7 +71,7 @@ export function registerCekHandlers(bot: Telegraf<MyContext>) {
   });
 
   // Known keyboard commands - should NOT be processed as search queries
-  const knownCommands = ["Cek Redaman 1 PORT", "Refresh", "Cancel", "Reboot", "Config Ulang", "Cek Status 1 PORT"];
+  const knownCommands = ["Cek Redaman 1 PORT", "Refresh", "Cancel", "Reboot", "Config Ulang", "Cek Status 1 PORT", "Cek Config"];
 
   // --- "cek" or "cek <text>" without slash ---
   bot.hears(/^cek(?:\s+(.+))?$/i, async (ctx, next) => {

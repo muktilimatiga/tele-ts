@@ -9,6 +9,7 @@ import { registerStartHandlers } from "./start";
 import { registerBillingHandlers } from "./billing";
 import { registerAllCekHandlers } from "./cek";
 import { registerPsbHandlers } from "./config/config";
+import { registerTicketHandlers } from "./ticket";
 
 /**
  * Register all bot command/action handlers
@@ -18,6 +19,7 @@ export function registerAllHandlers(bot: Telegraf<MyContext>) {
   registerBillingHandlers(bot);
   registerAllCekHandlers(bot); // Registers all cek handlers (command + actions)
   registerPsbHandlers(bot);
+  registerTicketHandlers(bot);
 }
 
 // Re-export individual features for selective use

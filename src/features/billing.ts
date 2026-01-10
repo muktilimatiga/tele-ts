@@ -192,7 +192,7 @@ export function registerBillingHandlers(bot: Telegraf<MyContext>) {
     ctx.session.step = "IDLE";
     ctx.session.billingResults = undefined;
 
-    await ctx.editMessageText(`✅ Dipilih: ${customer.name}\n⏳ Mengambil data billing...`);
+    await ctx.editMessageText(`Dipilih: ${customer.name}\nMengambil data billing...`);
 
     console.log(`[Billing] Selected customer, fetching billing for: ${pppoeUser}`);
     await sendBillingInfo(ctx, pppoeUser);

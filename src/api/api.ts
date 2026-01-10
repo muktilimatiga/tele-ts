@@ -131,6 +131,64 @@ export const Api = {
     return data;
   },
 
+  getDba: async (
+    oltName: string,
+    interfaceName: string
+  ): Promise<{ result: number }> => {
+    const { data } = await AXIOS_INSTANCE.post<{ result: number }>(
+      `/api/v1/onu/${oltName}/onu/get-dba`,
+      {
+        olt_name: oltName,
+        interface: interfaceName,
+      }
+    );
+    return data;
+  },
+
+  getRunningConfig: async (
+    oltName: string,
+    interfaceName: string
+  ): Promise<{ running_config: string; onu_running_config: string }> => {
+    const { data } = await AXIOS_INSTANCE.post<{ running_config: string; onu_running_config: string }>(
+      `/api/v1/onu/${oltName}/onu/get-running-config`,
+      {
+        olt_name: oltName,
+        interface: interfaceName,
+      }
+    );
+    return data;
+  },
+
+  getEthStatus: async (
+    oltName: string,
+    interfaceName: string
+  ): Promise<string> => {
+    const { data } = await AXIOS_INSTANCE.post<string>(
+      `/api/v1/onu/${oltName}/onu/get-eth`,
+      {
+        olt_name: oltName,
+        interface: interfaceName,
+      }
+    );
+    return data;
+  },
+
+  sendEthLock: async (
+    oltName: string,
+    interfaceName: string,
+    isUnlocked: boolean
+  ): Promise<string> => {
+    const { data } = await AXIOS_INSTANCE.post<string>(
+      `/api/v1/onu/${oltName}/onu/lock-eth`,
+      {
+        olt_name: oltName,
+        interface: interfaceName,
+        is_unlocked: isUnlocked,
+      }
+    );
+    return data;
+  },
+  
   // --- BILLING ---
   getInvoices: async (query: string): Promise<CustomerData[]> => {
     const { data } = await AXIOS_INSTANCE.get<

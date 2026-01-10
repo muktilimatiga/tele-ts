@@ -58,7 +58,7 @@ export async function sessionTimeoutMiddleware(
     // Notify user if they were in an active flow
     if (wasInFlow) {
       await ctx.reply(
-        "⏰ Session anda telah berakhir karena tidak ada aktivitas selama 2 menit.",
+        "Sesi anda telah berakhir karena tidak ada aktivitas selama 2 menit.",
         mainMenuKeyboard()
       );
     }

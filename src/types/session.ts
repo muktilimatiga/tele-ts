@@ -45,8 +45,15 @@ export interface SessionData {
   | "CEK_WAITING"
   | "CEK_SELECT"
   | "CEK_ACTIONS"
+  | "CEK_CHANGE_CAPACITY"
   | "REBOOT_CONFIRM"
   | "CONFIG_ULANG_CONFIRM"
+
+  // Ticket Flow
+  | "TICKET_WAITING_QUERY"
+  | "TICKET_WAITING_DESCRIPTION"
+  | "TICKET_SELECT"
+  | "TICKET_CONFIRM"
 
   // Billing flow
   | "BILLING_SELECT";
@@ -73,6 +80,12 @@ export interface SessionData {
   // Config ulang flow data
   configUlangCustomer?: any;
   noOnu?: boolean;
+
+  // Ticket flow data
+  ticketResults?: any[];
+  ticketCustomer?: any;
+  ticketQuery?: string;
+  ticketDescription?: string;
 
   // Session timeout tracking
   lastActivity?: number;

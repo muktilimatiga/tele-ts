@@ -25,17 +25,13 @@ const notifyRestartToUsers = async () => {
     try {
       await bot.telegram.sendMessage(
         chatId,
-        `🔄 *Bot telah direstart.* Session sebelumnya telah dihapus.\n\n` +
-        `📚 *Panduan Bot*\n\n` +
-        `*PSB (Pasang Baru):*\n` +
-        `/psb - Mulai wizard konfigurasi ONT\n\n` +
-        `*Cek Pelanggan:*\n` +
-        `/cek <nama/pppoe> - Cek data pelanggan\n\n` +
-        `*Tagihan:*\n` +
-        `/link <nama/pppoe> - Cek detail tagihan\n\n` +
-        `*Ticket:*\n` +
-        `/open <query> - Buka tiket gangguan\n\n` +
-        `*Contoh:*\n` +
+        `Bot telah direstart. Session sebelumnya telah dihapus.\n\n` +
+        `Panduan Bot\n\n` +
+        `config psb\n` +
+        `cek\n` +
+        `link\n` +
+        `open\n` +
+        `Contoh:\n` +
         `• \`/cek nasrul beji\`\n` +
         `• \`/link nasrul beji\``,
         {

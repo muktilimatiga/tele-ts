@@ -15,14 +15,6 @@ export const ONU_ACTION_BUTTONS = [
   ["Refresh", "Cancel"]
 ];
 
-export const RUNNING_ACTION_BUTTON = [
-  ["Lock / Unlock Port", "Ganti kapasitas ONU"],
-  ["Refresh", "Cancel"]
-]
-
-export function runningActionKeyboard() {
-  return Markup.keyboard(RUNNING_ACTION_BUTTON).resize();
-}
 /**
  * ONU Actions as Reply Keyboard (persistent at bottom)
  * This replaces the main menu while in CEK flow

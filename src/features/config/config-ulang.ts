@@ -81,7 +81,7 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
       const searchResults = await useCustomer.search(query);
 
       if (!searchResults || searchResults.length === 0) {
-        return ctx.reply(`❌ Pelanggan tidak ditemukan: \`${query}\``, {
+        return ctx.reply(`Pelanggan tidak ditemukan: \`${query}\``, {
           parse_mode: "Markdown",
         });
       }
@@ -146,7 +146,7 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
 
     // Then show confirmation prompt
     // Remove reply keyboard first
-    await ctx.reply("⚠️ *Hapus ONU lama dulu?*", {
+    await ctx.reply("Hapus ONU lama dulu?", {
       parse_mode: "Markdown",
       ...removeKeyboard(),
     });
@@ -226,12 +226,12 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
 
       // Show ONU data and ask for confirmation to delete
       await ctx.reply(
-        `📋 *Data ONU Saat Ini*\n\n` +
+        `*Data ONU Saat Ini*\n\n` +
         `Nama: ${customer.name || "N/A"}\n` +
         `OLT: ${oltName}\n` +
         `Interface: ${interfaceName}\n\n` +
         `\`\`\`\n${rawText}\n\`\`\`\n\n` +
-        `⚠️ *Apakah data ini benar dan ingin dihapus?*`,
+        `*Apakah data ini benar dan ingin dihapus?*`,
         {
           parse_mode: "Markdown",
           ...Markup.inlineKeyboard([
@@ -262,7 +262,7 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
     const oltName = customer.olt_name;
     const interfaceName = customer.interface;
 
-    await ctx.editMessageText("⏳ Menghapus ONU lama...");
+    await ctx.editMessageText("Menghapus ONU lama...");
 
     try {
       // Call sendNoOnu API
@@ -293,12 +293,12 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
 
     const oltName = customer.olt_name;
     if (!oltName) {
-      return ctx.reply("⚠️ Data OLT tidak tersedia.");
+      return ctx.reply("Data OLT tidak tersedia.");
     }
 
     ctx.session.noOnu = false;
     ctx.session.oltName = oltName;
-    await ctx.editMessageText(`✅ Scanning ONT di ${oltName}...`);
+    await ctx.editMessageText(`Scanning ONT di ${oltName}...`);
     
     await scanAndShowOnts(ctx, oltName);
   });
@@ -471,7 +471,7 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
     const lockStatus = ethLock?.every(Boolean) ? "🔒 Locked" : "🔓 Unlocked";
 
     const msg =
-      `✅ *Konfirmasi Config Ulang*\n\n` +
+      `*Konfirmasi Config Ulang*\n\n` +
       `Nama: \`${customer?.name || "N/A"}\`\n` +
       `PPPoE: \`${customer?.pppoe_user || "N/A"}\`\n` +
       `OLT: \`${oltName}\`\n` +
@@ -531,7 +531,7 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
       ctx.session = { step: "IDLE" };
 
       await ctx.editMessageText(
-        `✅ *Config Ulang Berhasil*\n\n
+        `*Config Ulang Berhasil*\n\n
         Serial: ${result.summary?.serial_number}\n
         Nama: ${result.summary?.name}\n
         PPPoE: ${result.summary?.pppoe_user}\n
