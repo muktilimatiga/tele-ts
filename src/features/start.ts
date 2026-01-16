@@ -15,9 +15,9 @@ export function registerStartHandlers(bot: Telegraf<MyContext>) {
       `🤖 *BOT Fiber Lexxadata*\n\n` +
       `📋 *Perintah yang tersedia:*\n` +
       `• /config - Konfigurasi ONT baru\n` +
-      `• /cek <query> - Cek status pelanggan\n` +
+      `• /cek <nama/pppoe> - Cek status pelanggan\n` +
       `• /link <nama/pppoe> - Cek tagihan\n` +
-      `• /open <query> - Open ticket\n\n` +
+      `• /open <nama/pppoe> <kendala> - Open ticket\n\n` +
       `Ketik /help untuk bantuan lebih lanjut.`,
       {
         parse_mode: "Markdown",
@@ -28,7 +28,7 @@ export function registerStartHandlers(bot: Telegraf<MyContext>) {
 
   bot.help(async (ctx) => {
     await ctx.reply(
-      `📚 *Panduan Bot*\n\n` +
+      `*Panduan Bot*\n\n` +
       `*Config ONT:*\n` +
       `/config - Mulai wizard konfigurasi ONT\n\n` +
       `*Cek Pelanggan:*\n` +

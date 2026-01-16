@@ -61,7 +61,7 @@ export function listKeyboard<T>(
  */
 export function oltListKeyboard(olts: string[]) {
   const buttons = olts.map((olt) => [
-    Markup.button.callback(`📡 ${olt}`, `olt:${olt}`),
+    Markup.button.callback(`${olt}`, `olt:${olt}`),
   ]);
   buttons.push([Markup.button.callback("Cancel", "cancel")]);
   return Markup.inlineKeyboard(buttons);
@@ -95,9 +95,7 @@ export function refreshCancelKeyboard(refreshCallback: string) {
  * Edit this array to change the main menu buttons
  */
 export const MAIN_MENU_BUTTONS = [
-  ["/psb", "/cek"],
   ["/link", "/open"],
-  ["/help"],
 ];
 
 /**

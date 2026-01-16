@@ -4,7 +4,7 @@
  * This module handles the /cek command and related ONU check actions.
  */
 import type { Telegraf } from "telegraf";
-import type { MyContext } from "../../types/session";
+import type { MyContext } from "@/types/session";
 
 // Import all handlers
 import { registerCekHandlers } from "./cek";
@@ -13,7 +13,7 @@ import { registerCekStatus1PortHandler } from "./cek-1-port";
 import { registerCekRedaman1PortHandler } from "./cek-redaman-1-port";
 import { registerCekRunningConfigHandler } from "./cek-running-config";
 import { registerRebootHandler } from "./reboot";
-import { registerConfigUlangHandler } from "../config/config-ulang";
+import { registerConfigUlangHandler } from "@/features/config";
 
 // Re-export individual handlers for flexibility
 export { registerCekHandlers } from "./cek";
@@ -22,7 +22,7 @@ export { registerCekStatus1PortHandler } from "./cek-1-port";
 export { registerCekRedaman1PortHandler } from "./cek-redaman-1-port";
 export { registerCekRunningConfigHandler } from "./cek-running-config";
 export { registerRebootHandler } from "./reboot";
-export { registerConfigUlangHandler } from "../config/config-ulang";
+export { registerConfigUlangHandler } from "@/features/config";
 
 // Re-export utils and keyboards
 export { cleanOnuOutput, parseOnuResult } from "./utils";

@@ -1,12 +1,20 @@
 import type { AxiosError } from "axios";
-import Axios, { type AxiosRequestConfig } from 'axios';
+import Axios, { type AxiosRequestConfig } from "axios";
 import { API_BASE_URL } from "../config";
 
-export const AXIOS_INSTANCE = Axios.create({ baseURL: API_BASE_URL }); // use your own URL here or environment variable
+export const AXIOS_INSTANCE = Axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 60000, // 60 seconds - allows slow backend operations to complete
+});
 
 // Debug interceptor - log all requests
 AXIOS_INSTANCE.interceptors.request.use((config) => {
-  console.log(`[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.params || '');
+  console.log(
+    `[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${
+      config.url
+    }`,
+    config.params || ""
+  );
   return config;
 });
 
@@ -17,7 +25,10 @@ AXIOS_INSTANCE.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error(`[API Error] ${error.config?.url}:`, error.response?.data || error.message);
+    console.error(
+      `[API Error] ${error.config?.url}:`,
+      error.response?.data || error.message
+    );
     return Promise.reject(error);
   }
 );
@@ -25,7 +36,7 @@ AXIOS_INSTANCE.interceptors.response.use(
 // add a second `options` argument here if you want to pass extra options to each generated query
 export const customInstance = <T>(
   config: AxiosRequestConfig,
-  options?: AxiosRequestConfig,
+  options?: AxiosRequestConfig
 ): Promise<T> => {
   const promise = AXIOS_INSTANCE({
     ...config,
@@ -39,4 +50,3 @@ export const customInstance = <T>(
 export type ErrorType<Error> = AxiosError<Error>;
 
 export type BodyType<BodyData> = BodyData;
-

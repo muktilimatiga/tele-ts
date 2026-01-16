@@ -4,17 +4,16 @@
  */
 
 import { Markup, type Telegraf } from "telegraf";
-import type { MyContext, SessionData } from "../../types/session";
-import { useCustomer, useConfigApi, configApi } from "../../api/hooks";
-import { formatError, logError } from "../../utils/error-handler";
+import type { MyContext, SessionData } from "@/types/session";
+import { useCustomer, useConfigApi, configApi } from "@/api/hooks";
+import { formatError, logError } from "@/utils/error-handler";
 import {
   oltListKeyboard,
   modemSelectKeyboard,
   confirmKeyboard,
   refreshCancelKeyboard,
-  listKeyboard,
   ethLockKeyboard,
-  removeKeyboard
+  removeKeyboard,
 } from "../../keyboards";
 
 /**
@@ -60,12 +59,12 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
   };
 
   bot.command("config", startPsb);
-  bot.action("menu_config", startPsb);
-  
+  bot.action("config", startPsb);
+
   // Handle 'config <olt_name>' - directly scan ONTs on specified OLT
   bot.hears(/^\/?(?:config|cfg)(?:\s+(.+))?$/i, async (ctx) => {
     const oltQuery = ctx.match[1]?.trim();
-    
+
     // If no OLT specified, show OLT selection
     if (!oltQuery) {
       return startPsb(ctx);
@@ -77,15 +76,17 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
       // Get available OLTs and find matching one
       const options = await useConfigApi.getOptions();
       const olts = options.olt_options;
-      
+
       // Find OLT that matches (case-insensitive, partial match)
-      const matchedOlt = olts.find((olt: string) => 
+      const matchedOlt = olts.find((olt: string) =>
         olt.toLowerCase().includes(oltQuery.toLowerCase())
       );
 
       if (!matchedOlt) {
         return ctx.reply(
-          `❌ OLT "${oltQuery}" tidak ditemukan.\n\nOLT tersedia:\n${olts.map((o: string) => `• ${o}`).join("\n")}`
+          `❌ OLT "${oltQuery}" tidak ditemukan.\n\nOLT tersedia:\n${olts
+            .map((o: string) => `• ${o}`)
+            .join("\n")}`
         );
       }
 
@@ -104,14 +105,13 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
 
       const buttons = onts
         .slice(0, 5)
-        .map((ont, idx) => [
-          Markup.button.callback(`${ont.sn}`, `ont:${idx}`),
-        ]);
+        .map((ont, idx) => [Markup.button.callback(`${ont.sn}`, `ont:${idx}`)]);
 
-      await ctx.reply(`📡 *${matchedOlt}* - Pilih ONT (Found: ${onts.length})`, {
+      await ctx.reply(`*${matchedOlt}* - Pilih ONT (Found: ${onts.length})`, {
         parse_mode: "Markdown",
         ...Markup.inlineKeyboard([
           ...buttons,
+          [Markup.button.callback("Refresh", "refresh_ont")],
           [Markup.button.callback("Cancel", "cancel")],
         ]),
       });
@@ -126,15 +126,16 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
     await ctx.answerCbQuery();
 
     // Validate step
-    if (!await requireStep(ctx, "SELECT_OLT")) return;
+    if (!(await requireStep(ctx, "SELECT_OLT"))) return;
 
+    const match = ctx.match as RegExpMatchArray;
     const oltName = ctx.match[1]!;
 
     ctx.session.oltName = oltName;
     ctx.session.step = "SELECT_ONT";
 
     await ctx.editMessageText(`⏳ Scanning ONT di ${oltName}...`, {
-      parse_mode: "Markdown",
+      parse_mode: "Markdown", // This line seems redundant as editMessageText doesn't directly accept parse_mode here.
     });
 
     try {
@@ -150,16 +151,12 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
 
       const buttons = onts
         .slice(0, 5)
-        .map((ont, idx) => [
-          Markup.button.callback(
-            `${ont.sn}`,
-            `ont:${idx}`
-          ),
-        ]);
+        .map((ont, idx) => [Markup.button.callback(`${ont.sn}`, `ont:${idx}`)]);
 
       await ctx.editMessageText(`📡 *Pilih ONT* (Found: ${onts.length})`, {
         ...Markup.inlineKeyboard([
           ...buttons,
+          [Markup.button.callback("Refresh", "refresh_ont")],
           [Markup.button.callback("Cancel", "cancel")],
         ]),
       });
@@ -174,7 +171,7 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
     await ctx.answerCbQuery();
 
     // Validate step
-    if (!await requireStep(ctx, "SELECT_ONT")) return;
+    if (!(await requireStep(ctx, "SELECT_ONT"))) return;
 
     const idx = parseInt(ctx.match[1]!);
     const ont = ctx.session.ontList?.[idx];
@@ -209,15 +206,13 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
           ),
         ]);
 
-      await ctx.editMessageText(
-        `👤 *Pilih Pelanggan PSB*\nONT: \`${ont.sn}\``,
-        {
-          ...Markup.inlineKeyboard([
-            ...buttons,
-            [Markup.button.callback("Cancel", "cancel")],
-          ]),
-        }
-      );
+      await ctx.editMessageText(`*Pilih Pelanggan PSB*\nONT: \`${ont.sn}\``, {
+        ...Markup.inlineKeyboard([
+          ...buttons,
+          [Markup.button.callback("Refresh", "refresh_psb")],
+          [Markup.button.callback("Cancel", "cancel")],
+        ]),
+      });
     } catch (e: unknown) {
       logError("PSB List", e);
       await ctx.editMessageText(formatError(e));
@@ -229,7 +224,7 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
     await ctx.answerCbQuery();
 
     // Validate step
-    if (!await requireStep(ctx, "SELECT_PSB")) return;
+    if (!(await requireStep(ctx, "SELECT_PSB"))) return;
 
     const idx = parseInt(ctx.match[1]!);
     const psb = ctx.session.psbList?.[idx];
@@ -252,7 +247,7 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
     await ctx.answerCbQuery();
 
     // Validate step
-    if (!await requireStep(ctx, "SELECT_MODEM")) return;
+    if (!(await requireStep(ctx, "SELECT_MODEM"))) return;
 
     const modem = ctx.match[1];
     ctx.session.selectedModem = modem;
@@ -272,7 +267,7 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
     await ctx.answerCbQuery();
 
     // Validate step
-    if (!await requireStep(ctx, "CONFIRM_ETH_LOCK")) return;
+    if (!(await requireStep(ctx, "CONFIRM_ETH_LOCK"))) return;
 
     ctx.session.selectedEthLock = [true];
     await showConfirmation(ctx);
@@ -282,7 +277,7 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
     await ctx.answerCbQuery();
 
     // Validate step
-    if (!await requireStep(ctx, "CONFIRM_ETH_LOCK")) return;
+    if (!(await requireStep(ctx, "CONFIRM_ETH_LOCK"))) return;
 
     ctx.session.selectedEthLock = [false];
     await showConfirmation(ctx);
@@ -321,7 +316,7 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
   // --- EXECUTE CONFIGURATION ---
   bot.action("confirm_yes", async (ctx) => {
     // Validate step
-    if (!await requireStep(ctx, "CONFIRM")) return;
+    if (!(await requireStep(ctx, "CONFIRM"))) return;
 
     const {
       oltName,
@@ -359,12 +354,110 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
       ctx.session = { step: "IDLE" };
 
       await ctx.editMessageText(
-        `SUCCESS\n\n${result.summary || "Configured!"}`,
+        `*Config Berhasil*\n\n
+        Serial: ${result.summary?.serial_number}\n
+        Nama: ${result.summary?.name}\n
+        PPPoE: ${result.summary?.pppoe_user}\n
+        OLT dan ONU: ${result.summary?.location}\n
+        Paket: ${result.summary?.profile} || SUCCESS`
       );
-      removeKeyboard()
+      removeKeyboard();
     } catch (e: unknown) {
       logError("Config Execute", e);
       await ctx.editMessageText(formatError(e), { parse_mode: "Markdown" });
+    }
+  });
+
+  // --- REFRESH ONT LIST ---
+  bot.action("refresh_ont", async (ctx) => {
+    await ctx.answerCbQuery("Refreshing...");
+
+    const { oltName } = ctx.session;
+    if (!oltName) {
+      return ctx.reply("Session expired. /config to restart.");
+    }
+
+    try {
+      await ctx.editMessageText(`⏳ Scanning ONT di ${oltName}...`);
+
+      const onts = await useConfigApi.detectOnts(oltName);
+      ctx.session.ontList = onts;
+      ctx.session.step = "SELECT_ONT";
+
+      if (onts.length === 0) {
+        return ctx.editMessageText(
+          `Tidak ada ONT unconfigured di ${oltName}.`,
+          refreshCancelKeyboard(`olt:${oltName}`)
+        );
+      }
+
+      const buttons = onts
+        .slice(0, 5)
+        .map((ont, idx) => [Markup.button.callback(`${ont.sn}`, `ont:${idx}`)]);
+
+      await ctx.editMessageText(
+        `📡 *${oltName}* - Pilih ONT (Found: ${onts.length})`,
+        {
+          parse_mode: "Markdown",
+          ...Markup.inlineKeyboard([
+            ...buttons,
+            [Markup.button.callback("Refresh", "refresh_ont")],
+            [Markup.button.callback("Cancel", "cancel")],
+          ]),
+        }
+      );
+    } catch (e: unknown) {
+      logError("Refresh ONT", e);
+      await ctx.editMessageText(formatError(e));
+    }
+  });
+
+  // --- REFRESH PSB LIST ---
+  bot.action("refresh_psb", async (ctx) => {
+    await ctx.answerCbQuery("Refreshing...");
+
+    const { selectedOnt } = ctx.session;
+    if (!selectedOnt) {
+      return ctx.reply("Session expired. /config to restart.");
+    }
+
+    try {
+      await ctx.editMessageText("⏳ Mengambil data pelanggan (PSB)...");
+
+      const psbList = await useCustomer.getPsbList();
+      ctx.session.psbList = psbList;
+      ctx.session.step = "SELECT_PSB";
+
+      if (psbList.length === 0) {
+        return ctx.editMessageText(
+          "Tidak ada pelanggan yang ditemukan.",
+          refreshCancelKeyboard("refresh_psb")
+        );
+      }
+
+      const buttons = psbList
+        .slice(0, 5)
+        .map((p, i) => [
+          Markup.button.callback(
+            `${(p.name || "").slice(0, 15)} | ${p.address || "N/A"}`,
+            `psb:${i}`
+          ),
+        ]);
+
+      await ctx.editMessageText(
+        `*Pilih Pelanggan PSB*\nONT: \`${selectedOnt.sn}\``,
+        {
+          parse_mode: "Markdown",
+          ...Markup.inlineKeyboard([
+            ...buttons,
+            [Markup.button.callback("Refresh", "refresh_psb")],
+            [Markup.button.callback("Cancel", "cancel")],
+          ]),
+        }
+      );
+    } catch (e: unknown) {
+      logError("Refresh PSB", e);
+      await ctx.editMessageText(formatError(e));
     }
   });
 
@@ -373,6 +466,6 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
     await ctx.answerCbQuery("Cancelled");
     ctx.session = { step: "IDLE" };
     await ctx.editMessageText("Operation cancelled.");
-    removeKeyboard()
+    removeKeyboard();
   });
 }
