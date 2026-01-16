@@ -75,10 +75,11 @@ export function registerCekHandlers(bot: Telegraf<MyContext>) {
     "Cek Redaman 1 PORT",
     "Refresh",
     "Cancel",
-    "Reboot",
+    "Reboot ONU",
     "Config Ulang",
     "Cek Status 1 PORT",
     "Cek Config",
+    "Open Ticket",
   ];
 
   // --- "cek" or "cek <text>" without slash ---
