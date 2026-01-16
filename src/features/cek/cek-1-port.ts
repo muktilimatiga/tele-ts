@@ -5,7 +5,7 @@ import type { Telegraf } from "telegraf";
 import type { MyContext } from "../../types/session";
 import { useOnu } from "../../api/hooks";
 import { onuActionsKeyboard } from "./keyboards";
-import { cleanOnuOutput } from "./utils";
+import { cleanOnuOutput, splitLongMessage } from "./utils";
 import { formatError, logError } from "../../utils/error-handler";
 import { mainMenuKeyboard } from "../../keyboards";
 
@@ -36,7 +36,16 @@ export function registerCekStatus1PortHandler(bot: Telegraf<MyContext>) {
             .map(([k, v]) => `${k}: ${v}`)
             .join("\n");
 
-      await ctx.reply(`${resultText}`, {
+      // Split long messages into chunks
+      const chunks = splitLongMessage(resultText);
+      
+      // Send all chunks except the last one without keyboard
+      for (let i = 0; i < chunks.length - 1; i++) {
+        await ctx.reply(chunks[i]!);
+      }
+      
+      // Send last chunk with keyboard
+      await ctx.reply(chunks[chunks.length - 1]!, {
         ...onuActionsKeyboard(),
       });
     } catch (e: unknown) {

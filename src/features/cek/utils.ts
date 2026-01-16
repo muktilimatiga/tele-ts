@@ -58,3 +58,43 @@ export function parseOnuResult(rawResult: string): {
     attenuation: cleanOnuOutput(attenuationPart),
   };
 }
+
+/**
+ * Split long messages into chunks that fit Telegram's 4096 character limit
+ * Splits at newlines to preserve formatting
+ */
+export function splitLongMessage(text: string, maxLength = 4000): string[] {
+  if (text.length <= maxLength) {
+    return [text];
+  }
+
+  const chunks: string[] = [];
+  const lines = text.split("\n");
+  let currentChunk = "";
+
+  for (const line of lines) {
+    // If adding this line would exceed the limit
+    if ((currentChunk + "\n" + line).length > maxLength) {
+      if (currentChunk) {
+        chunks.push(currentChunk.trim());
+      }
+      // If a single line is too long, force split it
+      if (line.length > maxLength) {
+        for (let i = 0; i < line.length; i += maxLength) {
+          chunks.push(line.substring(i, i + maxLength));
+        }
+        currentChunk = "";
+      } else {
+        currentChunk = line;
+      }
+    } else {
+      currentChunk = currentChunk ? currentChunk + "\n" + line : line;
+    }
+  }
+
+  if (currentChunk.trim()) {
+    chunks.push(currentChunk.trim());
+  }
+
+  return chunks;
+}
