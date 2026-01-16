@@ -3,11 +3,11 @@
  * Flow: Search user → Select OLT → Select ONT (new SN) → Select Modem → ETH Lock → Confirm
  */
 import { Markup, type Telegraf } from "telegraf";
-import type { MyContext, SessionData } from "../../types/session";
-import { useCustomer, useConfigApi, configApi, useOnu } from "../../api/hooks";
-import { Api } from "../../api/api";
-import { formatError, logError } from "../../utils/error-handler";
-import { executeCekOnu } from "../cek/cek";
+import type { MyContext, SessionData } from "@/types/session";
+import { useCustomer, useConfigApi, configApi, useOnu } from "@/api/hooks";
+import { Api } from "@/api/api";
+import { formatError, logError } from "@/utils/error-handler";
+import { executeCekOnu } from "@/features/cek/cek";
 import {
   oltListKeyboard,
   modemSelectKeyboard,
@@ -16,7 +16,7 @@ import {
   ethLockKeyboard,
   customerSelectKeyboard,
   removeKeyboard,
-} from "../../keyboards";
+} from "@/keyboards";
 
 /**
  * Validate that the session is in the expected step
@@ -36,14 +36,27 @@ async function requireStep(
 }
 
 export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
-  // --- BARE "config ulang" (no query) -> Ask for name/pppoe ---
-  bot.hears(/^\/?(cu|config ulang)$/i, async (ctx) => {
+  // --- BARE "config ulang" (no query) ---
+  // If called from cek flow with a selected customer, use that customer directly
+  bot.hears(/^\/?(?:cu|config ulang)$/i, async (ctx) => {
+    // Check if we already have a selected customer from cek flow
+    const existingCustomer = ctx.session.selectedCustomer;
+
+    if (existingCustomer) {
+      // Use the existing customer from cek flow
+      ctx.session.configUlangCustomer = existingCustomer;
+      ctx.session.step = "CONFIRM_NO_ONU_CONFIGULANG";
+
+      await confirmNoOnu(ctx);
+      return;
+    }
+
+    // No existing customer - ask for name/pppoe
     ctx.session = { step: "CONFIGULANG_WAITING_QUERY" };
 
-    await ctx.reply(
-      "🔄 *Config Ulang*\n\nMasukkan nama atau PPPoE pelanggan:",
-      { parse_mode: "Markdown" }
-    );
+    await ctx.reply("*Config Ulang*\n\nMasukkan nama atau PPPoE pelanggan:", {
+      parse_mode: "Markdown",
+    });
   });
 
   // --- Handle text input when waiting for query ---
@@ -65,7 +78,9 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
     const query = ctx.match[2]?.trim();
 
     if (!query) {
-      return ctx.reply("Format: `/cu <nama/pppoe>`", { parse_mode: "Markdown" });
+      return ctx.reply("Format: `/cu <nama/pppoe>`", {
+        parse_mode: "Markdown",
+      });
     }
 
     await searchAndShowResults(ctx, query);
@@ -104,9 +119,12 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
         cekResults: searchResults,
       };
 
-      await ctx.reply(`📋 Ditemukan ${searchResults.length} pelanggan. Pilih:`, {
-        ...customerSelectKeyboard(searchResults, "cu_select:"),
-      });
+      await ctx.reply(
+        `📋 Ditemukan ${searchResults.length} pelanggan. Pilih:`,
+        {
+          ...customerSelectKeyboard(searchResults, "cu_select:"),
+        }
+      );
     } catch (error) {
       logError("Config Ulang Search", error);
       await ctx.reply(formatError(error));
@@ -116,7 +134,7 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
   bot.action(/^cu_select:(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery();
 
-    if (!await requireStep(ctx, "SELECT_PSB_CONFIGULANG")) return;
+    if (!(await requireStep(ctx, "SELECT_PSB_CONFIGULANG"))) return;
 
     const idx = parseInt(ctx.match[1]!);
     const customer = ctx.session.cekResults?.[idx];
@@ -178,7 +196,9 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
     ctx.session.step = "CONFIRM_NO_ONU_CONFIGULANG";
 
     await ctx.editMessageText(
-      `⚠️ *Hapus ONU lama dulu?*\n\nPelanggan: ${customer.name || "N/A"}\n\nPilih Ya jika ingin menghapus ONU lama sebelum config ulang.`,
+      `⚠️ *Hapus ONU lama dulu?*\n\nPelanggan: ${
+        customer.name || "N/A"
+      }\n\nPilih Ya jika ingin menghapus ONU lama sebelum config ulang.`,
       {
         parse_mode: "Markdown",
         ...Markup.inlineKeyboard([
@@ -196,7 +216,7 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
   bot.action("cu_no_onu_yes", async (ctx) => {
     await ctx.answerCbQuery();
 
-    if (!await requireStep(ctx, "CONFIRM_NO_ONU_CONFIGULANG")) return;
+    if (!(await requireStep(ctx, "CONFIRM_NO_ONU_CONFIGULANG"))) return;
 
     const customer = ctx.session.configUlangCustomer;
     if (!customer) {
@@ -227,16 +247,19 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
       // Show ONU data and ask for confirmation to delete
       await ctx.reply(
         `*Data ONU Saat Ini*\n\n` +
-        `Nama: ${customer.name || "N/A"}\n` +
-        `OLT: ${oltName}\n` +
-        `Interface: ${interfaceName}\n\n` +
-        `\`\`\`\n${rawText}\n\`\`\`\n\n` +
-        `*Apakah data ini benar dan ingin dihapus?*`,
+          `Nama: ${customer.name || "N/A"}\n` +
+          `OLT: ${oltName}\n` +
+          `Interface: ${interfaceName}\n\n` +
+          `\`\`\`\n${rawText}\n\`\`\`\n\n` +
+          `*Apakah data ini benar dan ingin dihapus?*`,
         {
           parse_mode: "Markdown",
           ...Markup.inlineKeyboard([
             [
-              Markup.button.callback("Ya, Hapus ONU Ini", "cu_delete_onu_confirm"),
+              Markup.button.callback(
+                "Ya, Hapus ONU Ini",
+                "cu_delete_onu_confirm"
+              ),
               Markup.button.callback("Batal", "cancel"),
             ],
           ]),
@@ -252,7 +275,7 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
   bot.action("cu_delete_onu_confirm", async (ctx) => {
     await ctx.answerCbQuery();
 
-    if (!await requireStep(ctx, "CONFIRM_DELETE_ONU_CONFIGULANG")) return;
+    if (!(await requireStep(ctx, "CONFIRM_DELETE_ONU_CONFIGULANG"))) return;
 
     const customer = ctx.session.configUlangCustomer;
     if (!customer) {
@@ -261,6 +284,12 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
 
     const oltName = customer.olt_name;
     const interfaceName = customer.interface;
+
+    if (!oltName || !interfaceName) {
+      return ctx.reply(
+        "Data OLT/Interface tidak tersedia untuk pelanggan ini."
+      );
+    }
 
     await ctx.editMessageText("Menghapus ONU lama...");
 
@@ -284,7 +313,7 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
   bot.action("cu_no_onu_no", async (ctx) => {
     await ctx.answerCbQuery();
 
-    if (!await requireStep(ctx, "CONFIRM_NO_ONU_CONFIGULANG")) return;
+    if (!(await requireStep(ctx, "CONFIRM_NO_ONU_CONFIGULANG"))) return;
 
     const customer = ctx.session.configUlangCustomer;
     if (!customer) {
@@ -299,7 +328,7 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
     ctx.session.noOnu = false;
     ctx.session.oltName = oltName;
     await ctx.editMessageText(`Scanning ONT di ${oltName}...`);
-    
+
     await scanAndShowOnts(ctx, oltName);
   });
 
@@ -307,7 +336,7 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
   async function scanAndShowOnts(ctx: MyContext, oltName: string) {
     try {
       ctx.session.step = "SELECT_ONT_CONFIGULANG";
-      
+
       const onts = await useConfigApi.detectOnts(oltName);
       ctx.session.ontList = onts;
 
@@ -318,21 +347,20 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
         );
       }
 
-      const buttons = onts.slice(0, 10).map((ont: any, idx: number) => [
-        Markup.button.callback(`${ont.sn}`, `cu_ont:${idx}`),
-      ]);
+      const buttons = onts
+        .slice(0, 10)
+        .map((ont: any, idx: number) => [
+          Markup.button.callback(`${ont.sn}`, `cu_ont:${idx}`),
+        ]);
 
-      await ctx.reply(
-        `📡 *Pilih ONT (SN Baru)* (Found: ${onts.length})`,
-        {
-          parse_mode: "Markdown",
-          ...Markup.inlineKeyboard([
-            ...buttons,
-            [Markup.button.callback("Refresh", "cu_rescan_ont")],
-            [Markup.button.callback("Cancel", "cancel")],
-          ]),
-        }
-      );
+      await ctx.reply(`*Pilih ONT (SN Baru)* (Found: ${onts.length})`, {
+        parse_mode: "Markdown",
+        ...Markup.inlineKeyboard([
+          ...buttons,
+          [Markup.button.callback("Refresh", "cu_rescan_ont")],
+          [Markup.button.callback("Cancel", "cancel")],
+        ]),
+      });
     } catch (e: unknown) {
       logError("Config Ulang ONT Scan", e);
       await ctx.reply(formatError(e));
@@ -352,12 +380,11 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
     await scanAndShowOnts(ctx, oltName);
   });
 
-
   // --- OLT SELECTION ---
   bot.action(/^cu_olt:(.+)$/, async (ctx) => {
     await ctx.answerCbQuery();
 
-    if (!await requireStep(ctx, "SELECT_OLT_CONFIGULANG")) return;
+    if (!(await requireStep(ctx, "SELECT_OLT_CONFIGULANG"))) return;
 
     const oltName = ctx.match[1]!;
     ctx.session.oltName = oltName;
@@ -376,12 +403,14 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
         );
       }
 
-      const buttons = onts.slice(0, 10).map((ont: any, idx: number) => [
-        Markup.button.callback(`${ont.sn}`, `cu_ont:${idx}`),
-      ]);
+      const buttons = onts
+        .slice(0, 10)
+        .map((ont: any, idx: number) => [
+          Markup.button.callback(`${ont.sn}`, `cu_ont:${idx}`),
+        ]);
 
       await ctx.editMessageText(
-        `📡 *Pilih ONT (SN Baru)* (Found: ${onts.length})`,
+        `*Pilih ONT (SN Baru)* (Found: ${onts.length})`,
         {
           parse_mode: "Markdown",
           ...Markup.inlineKeyboard([
@@ -400,7 +429,7 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
   bot.action(/^cu_ont:(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery();
 
-    if (!await requireStep(ctx, "SELECT_ONT_CONFIGULANG")) return;
+    if (!(await requireStep(ctx, "SELECT_ONT_CONFIGULANG"))) return;
 
     const idx = parseInt(ctx.match[1]!);
     const ont = ctx.session.ontList?.[idx];
@@ -415,7 +444,9 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
     const customer = ctx.session.configUlangCustomer;
 
     await ctx.editMessageText(
-      `📱 *Pilih Tipe Modem*\nPelanggan: ${customer?.name || "N/A"}\nSN: \`${ont.sn}\``,
+      `📱 *Pilih Tipe Modem*\nPelanggan: ${customer?.name || "N/A"}\nSN: \`${
+        ont.sn
+      }\``,
       {
         parse_mode: "Markdown",
         ...modemSelectKeyboard(),
@@ -434,27 +465,23 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
     ctx.session.selectedModem = modem;
     ctx.session.step = "CONFIRM_ETH_LOCK_CONFIGULANG";
 
-    await ctx.editMessageText(
-      `📱 Modem: *${modem}*\n\n🔌 *Kunci PORT LAN?*`,
-      {
-        parse_mode: "Markdown",
-        ...Markup.inlineKeyboard([
-          Markup.button.callback("Lock", "cu_eth_lock"),
-          Markup.button.callback("Unlock", "cu_eth_unlock"),
-        ]),
-      }
-    );
+    await ctx.editMessageText(`📱 Modem: *${modem}*\n\n🔌 *Kunci PORT LAN?*`, {
+      parse_mode: "Markdown",
+      ...Markup.inlineKeyboard([
+        Markup.button.callback("Lock", "cu_eth_lock"),
+        Markup.button.callback("Unlock", "cu_eth_unlock"),
+      ]),
+    });
   });
 
   // --- ETH LOCK -> CONFIRMATION ---
   bot.action("cu_eth_lock", async (ctx) => {
     await ctx.answerCbQuery();
-    if (!await requireStep(ctx, "CONFIRM_ETH_LOCK_CONFIGULANG")) return;
+    if (!(await requireStep(ctx, "CONFIRM_ETH_LOCK_CONFIGULANG"))) return;
 
     ctx.session.selectedEthLock = [true];
     await showConfigUlangConfirmation(ctx);
   });
-
 
   // --- HELPER: Show Confirmation ---
   async function showConfigUlangConfirmation(ctx: MyContext) {
@@ -493,7 +520,7 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
   bot.action("cu_confirm_yes", async (ctx) => {
     await ctx.answerCbQuery();
 
-    if (!await requireStep(ctx, "CONFIRM_CONFIGULANG")) return;
+    if (!(await requireStep(ctx, "CONFIRM_CONFIGULANG"))) return;
 
     const {
       oltName,

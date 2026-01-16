@@ -14,10 +14,10 @@ export function registerStartHandlers(bot: Telegraf<MyContext>) {
     await ctx.reply(
       `🤖 *BOT Fiber Lexxadata*\n\n` +
       `📋 *Perintah yang tersedia:*\n` +
-      `• /psb - Konfigurasi ONT baru\n` +
-      `• /cek <query> - Cek status pelanggan\n` +
+      `• /config - Konfigurasi ONT baru\n` +
+      `• /cek <nama/pppoe> - Cek status pelanggan\n` +
       `• /link <nama/pppoe> - Cek tagihan\n` +
-      `• /open <query> - Open ticket\n\n` +
+      `• /open <nama/pppoe> <kendala> - Open ticket\n\n` +
       `Ketik /help untuk bantuan lebih lanjut.`,
       {
         parse_mode: "Markdown",
@@ -28,18 +28,19 @@ export function registerStartHandlers(bot: Telegraf<MyContext>) {
 
   bot.help(async (ctx) => {
     await ctx.reply(
-      `📚 *Panduan Bot*\n\n` +
-      `*PSB (Pasang Baru):*\n` +
-      `/psb - Mulai wizard konfigurasi ONT\n\n` +
+      `*Panduan Bot*\n\n` +
+      `*Config ONT:*\n` +
+      `/config - Mulai wizard konfigurasi ONT\n\n` +
       `*Cek Pelanggan:*\n` +
       `/cek <nama/pppoe> - Cek data pelanggan\n\n` +
       `*Tagihan:*\n` +
       `/link <nama/pppoe> - Cek detail tagihan\n\n` +
       `*Ticket:*\n` +
-      `/open <query> - Buka tiket gangguan\n\n` +
+      `/open <query> <kendala> - Buka tiket gangguan\n\n` +
       `*Contoh:*\n` +
-      `• \`/cek ahmad\`\n` +
-      `• \`/link john doe\``,
+      `• \`/cek umam beji\`\n` +
+      `• \`/link umam beji\`\n` +
+      `• \`/open umam beji wifi leg\`\n`,
       {
         parse_mode: "Markdown",
         ...mainMenuKeyboard(),

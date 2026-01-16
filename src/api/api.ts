@@ -188,12 +188,28 @@ export const Api = {
     );
     return data;
   },
-  
+
+  sendChangeCapacity: async (
+    oltName: string,
+    interfaceName: string,
+    newCapacity: string
+  ): Promise<string> => {
+    const { data } = await AXIOS_INSTANCE.post<string>(
+      `/api/v1/onu/${oltName}/onu/change-capacity`,
+      {
+        olt_name: oltName,
+        interface: interfaceName,
+        new_capacity: newCapacity,
+      }
+    );
+    return data;
+  },
+
   // --- BILLING ---
   getInvoices: async (query: string): Promise<CustomerData[]> => {
     const { data } = await AXIOS_INSTANCE.get<
       CustomerData[] | { data: CustomerData[] }
-    >("/customers/invoices", {
+    >("/customer/customers-billing", {
       params: { query },
       timeout: 15000,
     });
@@ -208,7 +224,7 @@ export const Api = {
   ): Promise<Array<Record<string, unknown>>> => {
     const { data } = await AXIOS_INSTANCE.get<
       Array<Record<string, unknown>> | { results: Array<Record<string, unknown>> }
-    >("/open-ticket/search", {
+    >("/api/v1/ticket/search", {
       params: { query },
     });
     if (Array.isArray(data)) return data;
@@ -223,7 +239,7 @@ export const Api = {
     headless?: boolean;
   }): Promise<TicketOperationResponse> => {
     const { data } = await AXIOS_INSTANCE.post<TicketOperationResponse>(
-      "/open-ticket/",
+      "api/v1/ticket/create",
       {
         priority: "LOW",
         jenis: "FREE",
@@ -231,6 +247,20 @@ export const Api = {
         ...payload,
       }
     );
+    return data;
+  },
+
+  // Convert images to text
+  sendOcr: async (imageBuffer: Buffer, filename: string): Promise<string> => {
+    const formData = new FormData();
+    const blob = new Blob([imageBuffer], { type: "image/jpeg" });
+    formData.append("file", blob, filename);
+
+    const { data } = await AXIOS_INSTANCE.post<string>("/api/v1/ocr/ocr", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
     return data;
   },
 };

@@ -9,6 +9,7 @@ import { onuActionsKeyboard } from "./keyboards";
 import { cleanOnuOutput } from "./utils";
 import { mainMenuKeyboard } from "../../keyboards";
 import { removeKeyboard } from "telegraf/markup";
+import { NEW_CAPACITY_KEYBOARD } from "./keyboards";
 
 export function registerCekRunningConfigHandler(bot: Telegraf<MyContext>) {
   // Handle "Cek Config" text from reply keyboard
@@ -61,18 +62,18 @@ export function registerCekRunningConfigHandler(bot: Telegraf<MyContext>) {
 
     try {
       const result = await Api.getEthStatus(oltName, interfaceName);
-      
+
       // Handle array of ETH port objects
       let resultText: string;
       let isLocked = false;
-      
+
       if (Array.isArray(result)) {
         // Format each port object nicely
         resultText = result.map((port: any) => {
           const lockIcon = port.is_unlocked ? "🔓" : "🔒";
           return `${lockIcon} ${port.interface}: ${port.is_unlocked ? "Unlocked" : "Locked"} | LAN: ${port.lan_detected ? "Terdeteksi" : "Tidak Terdeteksi"} | Speed: ${port.speed_status || "N/A"}`;
         }).join("\n");
-        
+
         // Check if ALL ports are locked (none unlocked)
         isLocked = result.every((port: any) => !port.is_unlocked);
       } else if (typeof result === "string") {
@@ -163,66 +164,62 @@ export function registerCekRunningConfigHandler(bot: Telegraf<MyContext>) {
     }
 
     await ctx.answerCbQuery();
-    ctx.session.step = "CEK_ACTIONS";
-    // send the dba capcity first
+    // send the dba capacity first
     try {
       const result = await Api.getDba(oltName, interfaceName);
       await ctx.reply(`DBA Capacity: ${result.result} Mbps`, removeKeyboard());
     } catch (error: any) {
       await ctx.reply(`Gagal get dba capacity: ${error.message}`, removeKeyboard());
     }
-    
-    // TODO: Fetch available packages from API if available
+
     await ctx.reply(
-      "Masukkan kapasitas baru:\n\n" +
-      "_Contoh: 10M, 20M, 50M_",
+      "Pilih kapasitas baru:",
       {
-        parse_mode: "Markdown",
-        ...Markup.inlineKeyboard([
-          [Markup.button.callback("Batal", "cancel")],
-        ]),
+        ...NEW_CAPACITY_KEYBOARD,
       }
     );
-    
-    ctx.session.step = "CEK_CHANGE_CAPACITY";
   });
 
-  // Handle text input for change capacity
-  bot.on("text", async (ctx, next) => {
-    if (ctx.session.step !== "CEK_CHANGE_CAPACITY") {
-      return next();
-    }
-
+  // Handle capacity selection callbacks (capacity_10M, capacity_20M, etc.)
+  bot.action(/^capacity_(.+)$/, async (ctx) => {
     const customer = ctx.session.selectedCustomer;
     if (!customer) {
-      ctx.session.step = "IDLE";
-      return ctx.reply("Session expired. Silahkan mulai dari awal", mainMenuKeyboard());
+      return ctx.reply("Session expired. Use /cek again.", mainMenuKeyboard());
     }
 
     const oltName = customer.olt_name;
     const interfaceName = customer.interface;
-    const newPackage = ctx.message.text.trim();
 
     if (!oltName || !interfaceName) {
-      ctx.session.step = "IDLE";
       return ctx.reply("Data OLT/Interface tidak tersedia.", onuActionsKeyboard());
     }
 
-    await ctx.reply(`Mengubah kapasitas ke ${newPackage}...`);
-
-    try {
-      // TODO: Replace with actual API call when available
-      // const result = await Api.changeCapacity(oltName, interfaceName, newPackage);
-      await ctx.reply(
-        `Kapasitas berhasil diubah ke ${newPackage}\n\n` +
-        `OLT: ${oltName}\nInterface: ${interfaceName}`,
-        onuActionsKeyboard()
-      );
-    } catch (error: any) {
-      await ctx.reply(`Gagal ubah kapasitas: ${error.message}`, onuActionsKeyboard());
+    // Extract capacity from callback data (e.g., "capacity_10M" -> "10M")
+    const newCapacity = ctx.match[1];
+    if (!newCapacity) {
+      return ctx.answerCbQuery("Invalid capacity selection");
     }
 
-    ctx.session.step = "CEK_ACTIONS";
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(`Mengubah kapasitas ke ${newCapacity}...`);
+
+    try {
+      const result = await Api.sendChangeCapacity(oltName, interfaceName, newCapacity);
+      await ctx.reply(
+        `Kapasitas berhasil diubah ke ${newCapacity}\n\n` +
+        `OLT: ${oltName}\nInterface: ${interfaceName}\n\n${result}`,
+        removeKeyboard()
+      );
+    } catch (error: any) {
+      await ctx.reply(`Gagal ubah kapasitas: ${error.message}`, removeKeyboard());
+    }
+  });
+
+  // Cancel capacity selection
+  bot.action("cancel_capacity", async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.editMessageText("Pemilihan kapasitas dibatalkan.");
+    await ctx.reply("Pilih aksi:", onuActionsKeyboard());
   });
 
   // Refresh - go back to running config
@@ -247,7 +244,7 @@ export function registerCekRunningConfigHandler(bot: Telegraf<MyContext>) {
 
       await ctx.reply(`Running Config:\n${result.running_config}`);
       await ctx.reply(`ONU Running Config:\n${result.onu_running_config}`, {
-        ...Markup.inlineKeyboard([  
+        ...Markup.inlineKeyboard([
           [Markup.button.callback("Lock / Unlock Port", "lock_unlock_port")],
           [Markup.button.callback("Ganti kapasitas ONU", "change_onu_capacity")],
           [Markup.button.callback("Refresh", "refresh"), Markup.button.callback("Cancel", "cancel")],

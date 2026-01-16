@@ -1,10 +1,10 @@
 import { Markup, type Telegraf } from "telegraf";
-import type { MyContext, SessionData } from "../../types/session";
-import { useCustomer, useOnu } from "../../api/hooks";
-import type { CustomerData } from "../../api/hooks";
+import type { MyContext, SessionData } from "@/types/session";
+import { useCustomer, useOnu } from "@/api/hooks";
+import type { CustomerData } from "@/api/hooks";
 import { onuActionsKeyboard } from "./keyboards";
-import { formatError, logError } from "../../utils/error-handler";
-import { customerSelectKeyboard } from "../../keyboards";
+import { formatError, logError } from "@/utils/error-handler";
+import { customerSelectKeyboard, removeKeyboard } from "@/keyboards";
 
 /**
  * Validate that the session is in the expected step
@@ -48,7 +48,7 @@ async function searchAndSelectCustomer(ctx: MyContext, searchText: string) {
       ctx.session.cekResults = results;
       ctx.session.step = "CEK_SELECT";
 
-      await ctx.reply(`📋 Ditemukan ${results.length} pelanggan. Pilih:`, {
+      await ctx.reply(`Ditemukan ${results.length} pelanggan. Pilih:`, {
         ...customerSelectKeyboard(results, "cek_select:"),
       });
     }
@@ -71,7 +71,15 @@ export function registerCekHandlers(bot: Telegraf<MyContext>) {
   });
 
   // Known keyboard commands - should NOT be processed as search queries
-  const knownCommands = ["Cek Redaman 1 PORT", "Refresh", "Cancel", "Reboot", "Config Ulang", "Cek Status 1 PORT", "Cek Config"];
+  const knownCommands = [
+    "Cek Redaman 1 PORT",
+    "Refresh",
+    "Cancel",
+    "Reboot",
+    "Config Ulang",
+    "Cek Status 1 PORT",
+    "Cek Config",
+  ];
 
   // --- "cek" or "cek <text>" without slash ---
   bot.hears(/^cek(?:\s+(.+))?$/i, async (ctx, next) => {
@@ -91,11 +99,11 @@ export function registerCekHandlers(bot: Telegraf<MyContext>) {
   // --- Handle follow-up text when waiting for cek input ---
   bot.on("text", async (ctx, next) => {
     if (ctx.session.step !== "CEK_WAITING") return next();
-    
+
     const text = ctx.message.text.trim();
     // If it's a known command, let it pass to the proper handler
     if (knownCommands.includes(text)) return next();
-    
+
     if (!text) return ctx.reply("Masukkan nama atau user pppoe");
 
     await searchAndSelectCustomer(ctx, text);
@@ -106,7 +114,7 @@ export function registerCekHandlers(bot: Telegraf<MyContext>) {
     await ctx.answerCbQuery();
 
     // Validate step
-    if (!await requireStep(ctx, "CEK_SELECT")) return;
+    if (!(await requireStep(ctx, "CEK_SELECT"))) return;
 
     const idx = parseInt(ctx.match[1]!);
     const customer = ctx.session.cekResults?.[idx];
@@ -118,9 +126,7 @@ export function registerCekHandlers(bot: Telegraf<MyContext>) {
     ctx.session.selectedCustomer = customer;
     ctx.session.step = "CEK_ACTIONS";
 
-    await ctx.editMessageText(
-      `Mengecek status ONU ${customer.name}...`
-    );
+    await ctx.editMessageText(`Mengecek status ONU ${customer.name}...`);
 
     await executeCekOnu(ctx, customer);
   });
@@ -136,9 +142,7 @@ export async function executeCekOnu(ctx: MyContext, customer: CustomerData) {
   const interfaceName = customer.interface;
 
   if (!oltName || !interfaceName) {
-    return ctx.reply(
-      "Data OLT/Interface tidak tersedia untuk pelanggan ini."
-    );
+    return ctx.reply("Data OLT/Interface tidak tersedia untuk pelanggan ini.");
   }
 
   try {
@@ -147,8 +151,8 @@ export async function executeCekOnu(ctx: MyContext, customer: CustomerData) {
       typeof result === "string"
         ? result
         : Object.entries(result)
-          .map(([k, v]) => `${k}: ${v}`)
-          .join("\n");
+            .map(([k, v]) => `${k}: ${v}`)
+            .join("\n");
 
     const { detail, attenuation } = parseOnuResult(rawText);
 
@@ -168,6 +172,6 @@ export async function executeCekOnu(ctx: MyContext, customer: CustomerData) {
     }
   } catch (e: unknown) {
     logError("Cek ONU", e);
-    await ctx.reply(formatError(e), onuActionsKeyboard());
+    await ctx.reply(formatError(e), removeKeyboard());
   }
 }

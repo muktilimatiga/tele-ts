@@ -32,7 +32,7 @@ function isSessionExpired(session: SessionData): boolean {
   return elapsed > SESSION_TIMEOUT_MS;
 }
 
-/**
+/**∫
  * Reset session to default state
  */
 function resetSession(session: SessionData): void {

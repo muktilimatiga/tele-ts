@@ -86,35 +86,32 @@ export const useOnu = {
   portRx: (oltName: string, interfaceName: string) =>
     Api.getPortRx(oltName, interfaceName),
 
+  /** Remove ONU */
   noOnu: (oltName: string, interfaceName: string) =>
     Api.sendNoOnu(oltName, interfaceName),
-  /** Get ONU IP */
-  // getIp: (oltName: string, interfaceName: string) =>
-  //   onuApi.getOnuIpApiV1OnuOnuGetIpPost({
-  //     olt_name: oltName,
-  //     interface: interfaceName,
-  //   }),
-
-  /** Check ethernet */
-  // cekEth: (oltName: string, interfaceName: string) =>
-  //   onuApi.cekEthApiV1OnuOnuCekEthPost({
-  //     olt_name: oltName,
-  //     interface: interfaceName,
-  //   }),
-
-  /** No ONU (remove) */
-  // noOnu: (oltName: string, interfaceName: string) =>
-  //   onuApi.noOnuApiV1OnuOnuNoOnuPost({
-  //     olt_name: oltName,
-  //     interface: interfaceName,
-  //   }),
 
   /** Get DBA profile */
-  // getDba: (oltName: string, interfaceName: string) =>
-  //   onuApi.getDbaApiV1OnuOnuGetDbaPost({
-  //     olt_name: oltName,
-  //     interface: interfaceName,
-  //   }),
+  getDba: (oltName: string, interfaceName: string) =>
+    Api.getDba(oltName, interfaceName),
+
+  /** Get running config */
+  getRunningConfig: (oltName: string, interfaceName: string) =>
+    Api.getRunningConfig(oltName, interfaceName),
+
+  /** Get ethernet status */
+  getEthStatus: (oltName: string, interfaceName: string) =>
+    Api.getEthStatus(oltName, interfaceName),
+
+  /** Lock/unlock ethernet port */
+  sendEthLock: (oltName: string, interfaceName: string, isUnlocked: boolean) =>
+    Api.sendEthLock(oltName, interfaceName, isUnlocked),
+
+  /** Change capacity/DBA */
+  sendChangeCapacity: (
+    oltName: string,
+    interfaceName: string,
+    newCapacity: string
+  ) => Api.sendChangeCapacity(oltName, interfaceName, newCapacity),
 };
 
 /**
@@ -179,4 +176,80 @@ export const useConfigApi = {
   /** Detect unconfigured ONTs */
   detectOnts: (oltName: string) =>
     configApi.detectUncfgOntsApiV1ConfigApiOltsOltNameDetectOntsGet(oltName),
+};
+
+/**
+ * PSB (Provisioning) operations
+ */
+export const usePsb = {
+  /** Get OLT options */
+  getOptions: () => Api.getOptions(),
+
+  /** Detect unconfigured ONTs */
+  detectOnts: (oltName: string) => Api.detectOnts(oltName),
+
+  /** Get PSB customer list */
+  getPsbList: () => Api.getPsbList(),
+
+  /** Configure ONT */
+  configureOnt: (
+    oltName: string,
+    payload: {
+      sn: string;
+      customer: {
+        name: string;
+        address: string;
+        pppoe_user: string;
+        pppoe_pass: string;
+      };
+      package: string;
+      modem_type: string;
+      eth_locks: boolean[];
+    }
+  ) => Api.configureOnt(oltName, payload),
+};
+
+/**
+ * Billing operations
+ */
+export const useBilling = {
+  /** Get customer invoices */
+  getInvoices: (query: string) => Api.getInvoices(query),
+};
+
+/**
+ * OCR operations
+ */
+export const useOcr = {
+  /** Convert image to text */
+  sendOcr: (imageBuffer: Buffer, filename: string) =>
+    Api.sendOcr(imageBuffer, filename),
+};
+
+/**
+ * Search operations (alternative to Orval-generated)
+ */
+export const useSearch = {
+  /** Search customers */
+  searchCustomers: (query: string) => Api.searchCustomers(query),
+
+  /** Search open tickets */
+  searchOpenTicket: (query: string) => Api.searchOpenTicket(query),
+};
+
+/**
+ * Manual Ticket operations (using Api instead of Orval)
+ */
+export const useTicketApi = {
+  /** Search open tickets */
+  search: (query: string) => Api.searchOpenTicket(query),
+
+  /** Create ticket */
+  create: (payload: {
+    query: string;
+    description: string;
+    priority?: string;
+    jenis?: string;
+    headless?: boolean;
+  }) => Api.createTicket(payload),
 };
