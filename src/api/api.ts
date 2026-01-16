@@ -84,7 +84,7 @@ export const Api = {
   cekOnu: async (oltName: string, interfaceName: string): Promise<string> => {
     const { data } = await AXIOS_INSTANCE.post<string>(
       `/api/v1/onu/${oltName}/onu/cek`,
-      { interface: interfaceName }
+      { olt_name: oltName, interface: interfaceName }
     );
     return data;
   },
@@ -95,7 +95,7 @@ export const Api = {
   ): Promise<string> => {
     const { data } = await AXIOS_INSTANCE.post<string>(
       `/api/v1/onu/${oltName}/onu/reboot`,
-      { interface: interfaceName }
+      { olt_name: oltName, interface: interfaceName }
     );
     return data;
   },
