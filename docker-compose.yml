@@ -1,0 +1,19 @@
+services:
+  tele-bot:
+    build: .
+    container_name: tele-ts-bot
+    restart: unless-stopped
+
+    # Load environment variables from your .env file
+    env_file:
+      - .env
+
+    network_mode: "host"
+
+    # Mount source code for live reload - no rebuild needed!
+    volumes:
+      - .:/app
+      - /app/node_modules # Exclude node_modules from mount
+
+    # Use watch mode for auto-reload on file changes
+    command: ["bun", "run", "--watch", "index.ts"]
