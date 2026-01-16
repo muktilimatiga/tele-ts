@@ -11,7 +11,7 @@ import { Markup } from "telegraf";
 export const ONU_ACTION_BUTTONS = [
   ["Cek Status 1 PORT", "Cek Redaman 1 PORT"],
   ["Cek Config", "Config Ulang"],
-  ["Reboot ONU"],
+  ["Reboot ONU", "Open Ticket"],
   ["Refresh", "Cancel"]
 ];
 

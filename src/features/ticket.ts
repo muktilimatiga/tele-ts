@@ -176,6 +176,41 @@ async function searchAndProceed(ctx: MyContext, query: string, description: stri
  * Register ticket command handlers
  */
 export function registerTicketHandlers(bot: Telegraf<MyContext>) {
+  // Handle "Open Ticket" button from CEK flow
+  // This uses the selectedCustomer from CEK session
+  bot.hears(/^Open Ticket$/i, async (ctx) => {
+    const customer = ctx.session.selectedCustomer;
+    
+    if (!customer || ctx.session.step !== "CEK_ACTIONS") {
+      // No customer in session, fall back to normal ticket flow
+      ctx.session.step = "TICKET_WAITING_QUERY";
+      return ctx.reply(
+        "Masukkan nama atau user PPPoE pelanggan:",
+        removeKeyboard()
+      );
+    }
+    
+    // Use customer from CEK flow
+    ctx.session.ticketCustomer = {
+      name: customer.name,
+      pppoe_user: customer.user_pppoe,
+      address: customer.address,
+      olt_name: customer.olt_name,
+      interface: customer.interface,
+    };
+    ctx.session.ticketQuery = customer.user_pppoe || customer.name;
+    ctx.session.step = "TICKET_WAITING_DESCRIPTION";
+    
+    await ctx.reply(
+      `📝 *Open Ticket*\n\n` +
+      `Pelanggan: ${customer.name}\n` +
+      `PPPoE: ${customer.user_pppoe || 'N/A'}\n` +
+      `Alamat: ${customer.address || 'N/A'}\n\n` +
+      `Masukkan kendala/deskripsi:`,
+      { parse_mode: "Markdown", ...removeKeyboard() }
+    );
+  });
+
   // Handle "open" command with or without arguments
   bot.hears(/^\/?(?:open|o)(?:\s+.*)?$/i, async (ctx) => {
     const { query, description } = parseTicketCommand(ctx.message.text);
