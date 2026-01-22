@@ -238,28 +238,38 @@ export function registerPsbHandlers(bot: Telegraf<MyContext>) {
 
     await ctx.editMessageText(
       `📱 *Pilih Tipe Modem*\nUser: ${psb.name ?? "N/A"}`,
-      modemSelectKeyboard()
+      modemSelectKeyboard("psb_modem")
     );
   });
 
   // --- MODEM SELECTION -> ETH LOCK ---
-  bot.action(/^modem:(.+)$/, async (ctx) => {
-    await ctx.answerCbQuery();
+  bot.action(/^psb_modem:(.+)$/, async (ctx) => {
+    try {
+      await ctx.answerCbQuery();
 
-    // Validate step
-    if (!(await requireStep(ctx, "SELECT_MODEM"))) return;
+      // Validate step
+      if (!(await requireStep(ctx, "SELECT_MODEM"))) return;
 
-    const modem = ctx.match[1];
-    ctx.session.selectedModem = modem;
-    ctx.session.step = "CONFIRM_ETH_LOCK";
+      const modem = ctx.match[1];
+      ctx.session.selectedModem = modem;
+      ctx.session.step = "CONFIRM_ETH_LOCK";
 
-    await ctx.editMessageText(
-      `📱 Modem: *${modem}*\n\n🔌 *Kunci PORT LAN?*\nPilih untuk mengunci atau membuka semua port LAN.`,
-      {
-        parse_mode: "Markdown",
-        ...ethLockKeyboard(),
-      }
-    );
+      console.log(`[Config] Selected modem: ${modem}`);
+
+      // Removed parse_mode to avoid markdown errors
+      await ctx.editMessageText(
+        `📱 Modem: ${modem}
+
+🔌 Kunci PORT LAN?
+Pilih untuk mengunci atau membuka semua port LAN.`,
+        {
+          ...ethLockKeyboard(),
+        }
+      );
+    } catch (e) {
+      logError("Modem Selection", e);
+      await ctx.reply("Error occurred during modem selection.");
+    }
   });
 
   // --- ETH LOCK -> CONFIRMATION ---

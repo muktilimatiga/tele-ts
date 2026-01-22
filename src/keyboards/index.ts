@@ -14,11 +14,11 @@ export function cancelKeyboard() {
 /**
  * Modem selection keyboard
  */
-export function modemSelectKeyboard() {
+export function modemSelectKeyboard(prefix: string = "modem") {
   return Markup.inlineKeyboard([
-    [Markup.button.callback("1. F609", "modem:F609")],
-    [Markup.button.callback("2. F670L", "modem:F670L")],
-    [Markup.button.callback("3. C-DATA", "modem:C-DATA")],
+    [Markup.button.callback("1. F609", `${prefix}:F609`)],
+    [Markup.button.callback("2. F670L", `${prefix}:F670L`)],
+    [Markup.button.callback("3. C-DATA", `${prefix}:C-DATA`)],
   ]);
 }
 

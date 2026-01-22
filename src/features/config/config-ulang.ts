@@ -449,13 +449,13 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
       }\``,
       {
         parse_mode: "Markdown",
-        ...modemSelectKeyboard(),
+        ...modemSelectKeyboard("cu_modem"),
       }
     );
   });
 
   // --- MODEM SELECTION -> ETH LOCK ---
-  bot.action(/^modem:(.+)$/, async (ctx) => {
+  bot.action(/^cu_modem:(.+)$/, async (ctx) => {
     // Only handle if in config ulang flow
     if (ctx.session.step !== "SELECT_MODEM_CONFIGULANG") return;
 
