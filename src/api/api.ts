@@ -39,7 +39,7 @@ export const Api = {
     interfaceName: string
   ): Promise<{ message: string }> => {
     const { data } = await AXIOS_INSTANCE.post<{ message: string }>(
-      `/api/olts/${oltName}/send-no-onu`,
+      `/api/olts/${oltName}/onu/no-onu`,
       {
         olt_name: oltName,
         interface: interfaceName,

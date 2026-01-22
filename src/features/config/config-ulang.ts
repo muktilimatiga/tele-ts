@@ -557,13 +557,16 @@ export function registerConfigUlangHandler(bot: Telegraf<MyContext>) {
       // Reset session on success
       ctx.session = { step: "IDLE" };
 
-      await ctx.editMessageText(
-        `*Config Ulang Berhasil*\n\n
-        Serial: ${result.summary?.serial_number}\n
-        Nama: ${result.summary?.name}\n
-        PPPoE: ${result.summary?.pppoe_user}\n
-        OLT dan ONU: ${result.summary?.location}\n
-        Paket: ${result.summary?.profile} || SUCCESS`
+      await ctx.deleteMessage().catch(() => {});
+      await ctx.reply(
+        `✅ *Config Ulang Berhasil*\n\n` +
+          `Serial: \`${result.summary?.serial_number}\`\n` +
+          `Nama: \`${result.summary?.name}\`\n` +
+          `PPPoE: \`${result.summary?.pppoe_user}\`\n` +
+          `OLT dan ONU: \`${result.summary?.location}\`\n` +
+          `Paket: \`${result.summary?.profile}\`\n\n` +
+          `*SUCCESS*`,
+        { parse_mode: "Markdown" }
       );
       removeKeyboard();
     } catch (e: unknown) {
