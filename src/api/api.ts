@@ -24,7 +24,7 @@ export const Api = {
 
   detectOnts: async (oltName: string): Promise<UnconfiguredOnt[]> => {
     const { data } = await AXIOS_INSTANCE.get<UnconfiguredOnt[]>(
-      `/api/olts/${oltName}/detect-onts`
+      `/api/olts/${oltName}/detect-onts`,
     );
     return data;
   },
@@ -36,14 +36,14 @@ export const Api = {
 
   sendNoOnu: async (
     oltName: string,
-    interfaceName: string
+    interfaceName: string,
   ): Promise<{ message: string }> => {
     const { data } = await AXIOS_INSTANCE.post<{ message: string }>(
-      `/api/olts/${oltName}/onu/no-onu`,
+      `/api/v1/onu/${oltName}/onu/no-onu`,
       {
         olt_name: oltName,
         interface: interfaceName,
-      }
+      },
     );
     return data;
   },
@@ -61,11 +61,11 @@ export const Api = {
       package: string;
       modem_type: string;
       eth_locks: boolean[];
-    }
+    },
   ): Promise<{ message: string }> => {
     const { data } = await AXIOS_INSTANCE.post<{ message: string }>(
       `/api/olts/${oltName}/configure`,
-      payload
+      payload,
     );
     return data;
   },
@@ -76,7 +76,7 @@ export const Api = {
       "/customer/customers-data",
       {
         params: { search: query, limit: 20 },
-      }
+      },
     );
     return data;
   },
@@ -84,88 +84,88 @@ export const Api = {
   cekOnu: async (oltName: string, interfaceName: string): Promise<string> => {
     const { data } = await AXIOS_INSTANCE.post<string>(
       `/api/v1/onu/${oltName}/onu/cek`,
-      { olt_name: oltName, interface: interfaceName }
+      { olt_name: oltName, interface: interfaceName },
     );
     return data;
   },
 
   rebootOnu: async (
     oltName: string,
-    interfaceName: string
+    interfaceName: string,
   ): Promise<string> => {
     const { data } = await AXIOS_INSTANCE.post<string>(
       `/api/v1/onu/${oltName}/onu/reboot`,
-      { olt_name: oltName, interface: interfaceName }
+      { olt_name: oltName, interface: interfaceName },
     );
     return data;
   },
 
   getPortState: async (
     oltName: string,
-    interfaceName: string
+    interfaceName: string,
   ): Promise<string> => {
     const { data } = await AXIOS_INSTANCE.post<string>(
       `/api/v1/onu/${oltName}/onu/port_state`,
       {
         olt_name: oltName,
         interface: interfaceName,
-      }
+      },
     );
     return data;
   },
 
   getPortRx: async (
     oltName: string,
-    interfaceName: string
+    interfaceName: string,
   ): Promise<string> => {
     const { data } = await AXIOS_INSTANCE.post<string>(
       `/api/v1/onu/${oltName}/onu/port_rx`,
       {
         olt_name: oltName,
         interface: interfaceName,
-      }
+      },
     );
     return data;
   },
 
   getDba: async (
     oltName: string,
-    interfaceName: string
+    interfaceName: string,
   ): Promise<{ result: number }> => {
     const { data } = await AXIOS_INSTANCE.post<{ result: number }>(
       `/api/v1/onu/${oltName}/onu/get-dba`,
       {
         olt_name: oltName,
         interface: interfaceName,
-      }
+      },
     );
     return data;
   },
 
   getRunningConfig: async (
     oltName: string,
-    interfaceName: string
+    interfaceName: string,
   ): Promise<{ running_config: string; onu_running_config: string }> => {
-    const { data } = await AXIOS_INSTANCE.post<{ running_config: string; onu_running_config: string }>(
-      `/api/v1/onu/${oltName}/onu/get-running-config`,
-      {
-        olt_name: oltName,
-        interface: interfaceName,
-      }
-    );
+    const { data } = await AXIOS_INSTANCE.post<{
+      running_config: string;
+      onu_running_config: string;
+    }>(`/api/v1/onu/${oltName}/onu/get-running-config`, {
+      olt_name: oltName,
+      interface: interfaceName,
+    });
     return data;
   },
 
   getEthStatus: async (
     oltName: string,
-    interfaceName: string
+    interfaceName: string,
   ): Promise<string> => {
     const { data } = await AXIOS_INSTANCE.post<string>(
       `/api/v1/onu/${oltName}/onu/get-eth`,
       {
         olt_name: oltName,
         interface: interfaceName,
-      }
+      },
     );
     return data;
   },
@@ -173,7 +173,7 @@ export const Api = {
   sendEthLock: async (
     oltName: string,
     interfaceName: string,
-    isUnlocked: boolean
+    isUnlocked: boolean,
   ): Promise<string> => {
     const { data } = await AXIOS_INSTANCE.post<string>(
       `/api/v1/onu/${oltName}/onu/lock-eth`,
@@ -181,7 +181,7 @@ export const Api = {
         olt_name: oltName,
         interface: interfaceName,
         is_unlocked: isUnlocked,
-      }
+      },
     );
     return data;
   },
@@ -189,7 +189,7 @@ export const Api = {
   sendChangeCapacity: async (
     oltName: string,
     interfaceName: string,
-    newCapacity: string
+    newCapacity: string,
   ): Promise<string> => {
     const { data } = await AXIOS_INSTANCE.post<string>(
       `/api/v1/onu/${oltName}/onu/change-capacity`,
@@ -197,7 +197,7 @@ export const Api = {
         olt_name: oltName,
         interface: interfaceName,
         new_capacity: newCapacity,
-      }
+      },
     );
     return data;
   },
@@ -217,10 +217,11 @@ export const Api = {
 
   // --- TICKET ---
   searchOpenTicket: async (
-    query: string
+    query: string,
   ): Promise<Array<Record<string, unknown>>> => {
     const { data } = await AXIOS_INSTANCE.get<
-      Array<Record<string, unknown>> | { results: Array<Record<string, unknown>> }
+      | Array<Record<string, unknown>>
+      | { results: Array<Record<string, unknown>> }
     >("/api/v1/ticket/search", {
       params: { query },
     });
@@ -242,7 +243,7 @@ export const Api = {
         jenis: "FREE",
         headless: true,
         ...payload,
-      }
+      },
     );
     return data;
   },
@@ -253,11 +254,15 @@ export const Api = {
     const blob = new Blob([imageBuffer], { type: "image/jpeg" });
     formData.append("file", blob, filename);
 
-    const { data } = await AXIOS_INSTANCE.post<string>("/api/v1/ocr/ocr", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
+    const { data } = await AXIOS_INSTANCE.post<string>(
+      "/api/v1/ocr/ocr",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       },
-    });
+    );
     return data;
   },
 };
